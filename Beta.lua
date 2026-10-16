@@ -1,9 +1,9 @@
 -- ==============================================================================
---  TLN CHEAT - VENYXHUB NEW LOADER EDITION (FULL FEATURES & TRANSLATION)
+--  TLN CHEAT - NEW LOADER EDITION (FULL FEATURES & TRANSLATION)
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
-local CHILLI_LOGO_ID = "rbxassetid://100224396235670" -- Thay ID logo ở đây nếu có
+local CHILLI_LOGO_ID = "rbxassetid://100224396235670"
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
@@ -367,7 +367,7 @@ local function translateVenyxText(raw)
     if not raw or raw == "" then return raw end
     local cacheKey = currentLanguage .. "|" .. raw
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if raw:find("Venyx SAE") then raw = raw:gsub("Venyx SAE", "Chilli SAE")
+    if raw:find("Venyx SAE") then raw = raw:gsub("Tlnx SAE", "Chilli SAE")
     elseif raw == "VENYX" then raw = NEW_TITLE end
     if currentLanguage == "EN" then FastCache[cacheKey] = raw; return raw end
     local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
@@ -531,7 +531,7 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     local oldExp = venyxGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
     local ExpandedIsland = Instance.new("Frame")
-    ExpandedIsland.Name = "ChilliV5_ExpandedIsland"
+    ExpandedIsland.Name = "Chilli_ExpandedIsland"
     ExpandedIsland.AnchorPoint = Vector2.new(0.5, 0)
     ExpandedIsland.Position = pill.Position
     ExpandedIsland.Size = UDim2.new(0, 260, 0, 78)
@@ -659,7 +659,7 @@ local function setupUnclippedCircularLogo(targetObj)
     if topPanel:GetAttribute("__FloatingLogoV5Perfect") then return end
     local sz = topPanel.AbsoluteSize; local pos = topPanel.AbsolutePosition
     if sz.X > 105 or sz.Y > 105 or sz.X < 28 or math.abs(sz.X - sz.Y) > 25 or pos.X > 350 then return end
-    topPanel:SetAttribute("__FloatingLogoV5Perfect", true)
+    topPanel:SetAttribute("__FloatingLogoPerfect", true)
     local container = topPanel
     for _, child in ipairs(container:GetDescendants()) do
         if child:IsA("UIPadding") or child:IsA("UIAspectRatioConstraint") or child:IsA("UISizeConstraint") then
@@ -795,7 +795,7 @@ local function tryPatchVenyx()
                                     hookTextForTranslation(desc)
                                 end
                             elseif (desc:IsA("ImageLabel") or desc:IsA("ImageButton"))
-                            and desc.Name ~= "ChilliV5CoverLogo" and desc.Name ~= "ChilliHeaderLogo"
+                            and desc.Name ~= "ChilliCoverLogo" and desc.Name ~= "ChilliHeaderLogo"
                             and desc.Name ~= "InnerChilliLogo" then
                                 if not desc:FindFirstAncestorOfClass("ScrollingFrame") then
                                     if mainWindow and not desc:IsDescendantOf(mainWindow) then
