@@ -7,8 +7,8 @@ local CHILLI_LOGO_ID = "rbxassetid://92622270383869" -- Thay ID logo ở đây n
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
-if not getgenv().__VenyxV5NewLoaded then
-    getgenv().__VenyxV5NewLoaded = true
+if not getgenv().__kaizoprimeNewLoaded then
+    getgenv().__KaizoprimeNewLoaded = true
     task.spawn(function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
@@ -38,8 +38,8 @@ local COLOR_SEQ_RAINBOW = ColorSequence.new({
     ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 55, 55))
 })
 
-if not getgenv().__ChilliV5RainbowLoop then
-    getgenv().__ChilliV5RainbowLoop = true
+if not getgenv().__ChilliRainbowLoop then
+    getgenv().__ChilliRainbowLoop = true
     task.spawn(function()
         local rot = 0
         while true do
