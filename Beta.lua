@@ -3,7 +3,7 @@
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
-local CHILLI_LOGO_ID = "rbxassetid://92622270383869" -- Thay ID logo ở đây nếu có
+local CHILLI_LOGO_ID = "rbxassetid://100224396235670" -- Thay ID logo ở đây nếu có
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
