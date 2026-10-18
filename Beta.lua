@@ -11,7 +11,7 @@ if not getgenv().__TLN CHEATNewLoaded then
     getgenv().__TLN CHEATV5NewLoaded = true
     task.spawn(function()
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/TLN CHEAT/main/TLN CHEAT"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
         end)
     end)
 end
