@@ -1,5 +1,5 @@
 -- ==============================================================================
---  TLN CHEAT - TLN CHEATHUB NEW LOADER
+--  TLN CHEAT - FULL FEATURES & TRANSLATION
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
@@ -7,8 +7,8 @@ local CHILLI_LOGO_ID = "rbxassetid://100224396235670" --
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
-if not getgenv().__TLN CHEATNewLoaded then
-    getgenv().__TLN CHEATV5NewLoaded = true
+if not getgenv().__TLNCV5NewLoaded then
+    getgenv().__TLNCV5NewLoaded = true
     task.spawn(function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
@@ -121,8 +121,7 @@ local EXACT_MATCH_VI = {
     ["Catching butterfly"] = "Đang bắt bướm",["Joining race"] = "Đang vào đường đua",
     ["Racing"] = "Đang đua xe",["Home"] = "Trang Chủ",["Dashboard"] = "Bảng Điều Khiển",
     ["Welcome back"] = "Chào mừng trở lại",["TLN CHEAT Discord"] = "TLN CHEAT Discord",
-    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời", ["Discord"] = "Discord",
-    ["Discord"] = "Discord",["MONEY /S"] = "TIỀN /GIÂY",["OPEN"] = "MỞ",
+    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời", ["Discord"] = "Discord",["MONEY /S"] = "TIỀN /GIÂY",["OPEN"] = "MỞ",
     ["Welcome to TLN CHEAT 1.0.0! Join our Discord for updates and support"] = "Chào mừng tới TLN CHEAT! Tham gia Discord để cập nhật và nhận hỗ trợ",
     ["Beta version"] = "Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."] = "Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
@@ -389,7 +388,6 @@ local EXACT_MATCH_VI = {
     ["Pinned"] = "Đã ghim",
     ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
     ["Clear all keybinds"] = "Xóa tất cả phím tắt",
-    ["Tween speed"] = "Tốc độ bay (Tween)",
     ["Instant steps"] = "Bước tức thì",
     ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
 }
