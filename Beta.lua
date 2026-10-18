@@ -462,7 +462,7 @@ local function translateStatusAction(cleanEn)
     FastCache[cacheKey] = result; return result
 end
 
-local function translateTLN CHEATText(raw)
+local function translateTLNCHEATText(raw)
     if not raw or raw == "" then return raw end
     local cacheKey = currentLanguage .. "|" .. raw
     if FastCache[cacheKey] then return FastCache[cacheKey] end
@@ -494,14 +494,14 @@ local function applyElementTranslation(inst)
     if inst:IsA("TextBox") then
         local origPh = inst:GetAttribute("OrigPlaceholder")
         if not origPh and inst.PlaceholderText ~= "" then origPh = inst.PlaceholderText; inst:SetAttribute("OrigPlaceholder", origPh) end
-        if origPh then inst.PlaceholderText = translateTLN CHEATText(origPh) end
+        if origPh then inst.PlaceholderText = translateTLNCHEATText(origPh) end
         return
     end
     local rawText = inst.Text
     if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
     local original = inst:GetAttribute("OrigRawText")
     if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
-    local mapped = translateTLN CHEATText(original)
+    local mapped = translateTLNCHEATText(original)
     if inst.Text ~= mapped then
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
@@ -830,7 +830,7 @@ local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
     end
 end
 
-local function tryPatchTLN CHEAT()
+local function tryPatchTLNCHEAT()
     for _, root in ipairs(roots) do
         if root then
             for _, gui in ipairs(root:GetChildren()) do
@@ -910,10 +910,10 @@ local function tryPatchTLN CHEAT()
     end
 end
 
-pcall(tryPatchTLN CHEAT)
+pcall(tryPatchTLNCHEAT)
 task.spawn(function()
     for _ = 1, 20 do
         task.wait(0.5)
-        pcall(tryPatchTLN CHEAT)
+        pcall(tryPatchTLNCHEAT)
     end
 end)
