@@ -1,17 +1,17 @@
 -- ==============================================================================
---  TLN CHEAT - NEW LOADER EDITION (FULL FEATURES & TRANSLATION)
+--  TLN CHEAT - TLN CHEATHUB NEW LOADER
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
-local CHILLI_LOGO_ID = "rbxassetid://100224396235670"
+local CHILLI_LOGO_ID = "rbxassetid://100224396235670" --
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
-if not getgenv().__kaizoprimeNewLoaded then
-    getgenv().__KaizoprimeNewLoaded = true
+if not getgenv().__TLN CHEATNewLoaded then
+    getgenv().__TLN CHEATV5NewLoaded = true
     task.spawn(function()
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/TLN CHEAT/main/TLN CHEAT"))()
         end)
     end)
 end
@@ -38,8 +38,8 @@ local COLOR_SEQ_RAINBOW = ColorSequence.new({
     ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 55, 55))
 })
 
-if not getgenv().__ChilliRainbowLoop then
-    getgenv().__ChilliRainbowLoop = true
+if not getgenv().__ChilliV5RainbowLoop then
+    getgenv().__ChilliV5RainbowLoop = true
     task.spawn(function()
         local rot = 0
         while true do
@@ -120,10 +120,10 @@ local EXACT_MATCH_VI = {
     ["Claiming offline cash"] = "Đang nhận tiền ngoại tuyến",["Catching shooting star"] = "Đang bắt sao băng",
     ["Catching butterfly"] = "Đang bắt bướm",["Joining race"] = "Đang vào đường đua",
     ["Racing"] = "Đang đua xe",["Home"] = "Trang Chủ",["Dashboard"] = "Bảng Điều Khiển",
-    ["Welcome back"] = "Chào mừng trở lại",["Venyx Discord"] = "TLN CHEAT Discord",
-    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời",
+    ["Welcome back"] = "Chào mừng trở lại",["TLN CHEAT Discord"] = "TLN CHEAT Discord",
+    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời", ["Discord"] = "Discord",
     ["Discord"] = "Discord",["MONEY /S"] = "TIỀN /GIÂY",["OPEN"] = "MỞ",
-    ["Welcome to Venyx 1.0.0! Join our Discord for updates and support"] = "Chào mừng tới TLN CHEAT! Tham gia Discord để cập nhật và nhận hỗ trợ",
+    ["Welcome to TLN CHEAT 1.0.0! Join our Discord for updates and support"] = "Chào mừng tới TLN CHEAT! Tham gia Discord để cập nhật và nhận hỗ trợ",
     ["Beta version"] = "Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."] = "Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
     ["Rejoin"] = "Vào lại",["Server hop"] = "Đổi server",["Copy Job ID"] = "Chép Job ID",
@@ -290,7 +290,108 @@ local EXACT_MATCH_VI = {
     ["Eternal"] = "Vĩnh Cửu (Eternal)",["COMMON"] = "PHỔ THÔNG",["UNCOMMON"] = "THƯỜNG",
     ["RARE"] = "HIẾM",["EPIC"] = "SỬ THI",["LEGENDARY"] = "HUYỀN THOẠI",
     ["MYTHIC"] = "THẦN THOẠI",["COSMIC"] = "VŨ TRỤ",["SECRET"] = "BÍ ẨN",
-    ["DIVINE"] = "THÁNH THẦN",["ETERNAL"] = "VĨNH CỬU"
+    ["DIVINE"] = "THÁNH THẦN",["ETERNAL"] = "VĨNH CỬU",
+    -- Halloween & Chức năng mới
+    ["HALLOWEEN DIMENSION"] = "CHIỀU KHÔNG GIAN HALLOWEEN",
+    ["Auto steal Halloween eggs"] = "Tự động cướp trứng Halloween",
+    ["Instant steal Halloween eggs"] = "Cướp trứng Halloween tức thì",
+    ["Steal speed"] = "Tốc độ cướp",
+    ["Halloween eggs"] = "Trứng Halloween",
+    ["Halloween rarities"] = "Độ hiếm Halloween",
+    ["Auto Pumpkin Moon"] = "Tự động Pumpkin Moon",
+    ["Auto buy Halloween Dimension Egg"] = "Tự mua trứng Halloween Dimension",
+    ["Walk speed"] = "Tốc độ đi bộ",
+    ["MONSTERS"] = "QUÁI VẬT",
+    ["Auto farm monsters"] = "Tự động farm quái vật",
+    ["Monster order"] = "Thứ tự quái vật",
+    ["PHANTOM EXPRESS"] = "TÀU MA (PHANTOM EXPRESS)",
+    ["TRAIN"] = "TÀU",
+    ["SOULS"] = "LINH HỒN",
+    ["Not here"] = "Không ở đây",
+    ["Auto Phantom Express"] = "Tự động Phantom Express",
+    ["Auto vacuum Ghouler boss"] = "Tự hút boss Ghouler",
+    ["Ghost target"] = "Mục tiêu ma",
+    ["Rarest first"] = "Hiếm nhất trước",
+    ["Auto trade souls"] = "Tự động đổi linh hồn",
+    ["GHOST DOG AND FISHING"] = "CHÓ MA VÀ CÂU CÁ",
+    ["QUEST"] = "NHIỆM VỤ",
+    ["FISH CAUGHT"] = "CÁ ĐÃ BẮT",
+    ["Done"] = "Hoàn thành",
+    ["Auto Ghost Dog quest"] = "Tự làm nhiệm vụ Chó Ma",
+    ["Auto fishing"] = "Tự động câu cá",
+    ["Cast luck"] = "Độ may mắn câu",
+    ["x1.5 Perfect"] = "x1.5 Hoàn hảo",
+    ["CURSED ISLAND WARS"] = "ĐẢO NGUYỀN RỦA (ISLAND WARS)",
+    ["Auto play Cursed Island Wars"] = "Tự động chơi Cursed Island Wars",
+    ["Island Wars target"] = "Mục tiêu Island Wars",
+    ["Enemies and base"] = "Kẻ thù và căn cứ",
+    ["Teleport zones"] = "Dịch chuyển theo khu vực",
+    ["Delivery speed"] = "Tốc độ giao trứng",
+    ["Change if steal fails"] = "Thay đổi nếu cướp thất bại",
+    ["Steal from other players"] = "Cướp từ người chơi khác",
+    ["Instant steal"] = "Cướp tức thì",
+    ["Admin treadmill"] = "Máy tập Admin",
+    ["Ping user ID"] = "Ping User ID",
+    ["Discord user ID"] = "Nhập Discord User ID",
+    ["Ping role ID"] = "Ping Role ID",
+    ["Discord role ID"] = "Nhập Discord Role ID",
+    ["CONFIG"] = "CẤU HÌNH",
+    ["PROFILES"] = "HỒ SƠ CẤU HÌNH",
+    ["ACTIVE"] = "ĐANG DÙNG",
+    ["SAVED CONFIGS"] = "CẤU HÌNH ĐÃ LƯU",
+    ["New config name"] = "Tên cấu hình mới",
+    ["Auto if empty"] = "Tự đặt tên nếu trống",
+    ["Create config"] = "Tạo cấu hình",
+    ["Create"] = "Tạo",
+    ["Pick to delete"] = "Chọn để xóa",
+    ["Delete picked"] = "Xóa đã chọn",
+    ["Delete"] = "Xóa",
+    ["Restore deleted"] = "Khôi phục đã xóa",
+    ["Export config"] = "Xuất cấu hình",
+    ["Import text"] = "Nhập văn bản",
+    ["Paste config text"] = "Dán văn bản cấu hình vào đây",
+    ["Import config"] = "Nhập cấu hình",
+    ["Import"] = "Nhập",
+    ["Set as active config"] = "Đặt làm cấu hình đang dùng",
+    ["Set active"] = "Đặt làm chính",
+    ["Save changes"] = "Lưu thay đổi",
+    ["Save"] = "Lưu",
+    ["Auto load"] = "Tự động tải",
+    ["Auto save"] = "Tự động lưu",
+    ["INTERFACE"] = "GIAO DIỆN",
+    ["UI scale"] = "Tỷ lệ giao diện",
+    ["Show / hide UI"] = "Hiện / Ẩn giao diện",
+    ["Opacity"] = "Độ mờ",
+    ["Tone"] = "Tông màu",
+    ["Dim the game"] = "Làm tối màn hình game",
+    ["THEME"] = "CHỦ ĐỀ MÀU",
+    ["Twilight"] = "Hoàng Hôn",
+    ["Aurora"] = "Cực Quang",
+    ["Ocean"] = "Đại Dương",
+    ["Midnight"] = "Nửa Đêm",
+    ["Sakura"] = "Hoa Anh Đào",
+    ["Onyx"] = "Đá Onyx",
+    ["Mono"] = "Đơn Sắc",
+    ["GAME HUD"] = "HUD GAME",
+    ["Steal panel button on game HUD"] = "Nút bảng Cướp trên HUD game",
+    ["DEFAULTS"] = "MẶC ĐỊNH",
+    ["Reset to defaults"] = "Đặt lại mặc định",
+    ["Reset"] = "Đặt lại",
+    ["Turn off all toggles"] = "Tắt tất cả công tắc",
+    ["Turn off"] = "Tắt hết",
+    ["QUICK BARS"] = "THANH NHANH",
+    ["Show quick bars"] = "Hiển thị thanh nhanh",
+    ["Keybinds"] = "Phím tắt",
+    ["Bar size"] = "Kích thước thanh",
+    ["PINS AND KEYBINDS"] = "GHIM & PHÍM TẮT",
+    ["Find an option"] = "Tìm tùy chọn",
+    ["All"] = "Tất cả",
+    ["Pinned"] = "Đã ghim",
+    ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
+    ["Clear all keybinds"] = "Xóa tất cả phím tắt",
+    ["Tween speed"] = "Tốc độ bay (Tween)",
+    ["Instant steps"] = "Bước tức thì",
+    ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
 }
 
 local STATUS_ACTION_PATTERNS_VI = {
@@ -328,9 +429,9 @@ local FALLBACK_VERB_PREFIX_VI = {
 
 local DYNAMIC_PATTERNS_VI = {
     {pat="^QUICK BAR (%d+)$",rep="THANH NHANH %1"},
-    {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 giờ trước"},
-    {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 phút trước"},
-    {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 ngày trước"},
+    {pat="TLN CHEAT(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 giờ trước"},
+    {pat="TLN CHEAT(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 phút trước"},
+    {pat="TLN CHEAT(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 ngày trước"},
     {pat="^ALL (%d+)$",rep="TẤT CẢ %1"},
     {pat="^READY (%d+)$",rep="SẴN SÀNG %1"},
     {pat="^GROWING (%d+)$",rep="ĐANG LỚN %1"},
@@ -363,12 +464,12 @@ local function translateStatusAction(cleanEn)
     FastCache[cacheKey] = result; return result
 end
 
-local function translateVenyxText(raw)
+local function translateTLN CHEATText(raw)
     if not raw or raw == "" then return raw end
     local cacheKey = currentLanguage .. "|" .. raw
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if raw:find("Venyx SAE") then raw = raw:gsub("Tlnx SAE", "Chilli SAE")
-    elseif raw == "VENYX" then raw = NEW_TITLE end
+    if raw:find("TLN CHEAT SAE") then raw = raw:gsub("TLN CHEAT SAE", "TLN SAE")
+    elseif raw == "TLN CHEAT" then raw = NEW_TITLE end
     if currentLanguage == "EN" then FastCache[cacheKey] = raw; return raw end
     local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
     if EXACT_MATCH_VI[normalized] then
@@ -395,14 +496,14 @@ local function applyElementTranslation(inst)
     if inst:IsA("TextBox") then
         local origPh = inst:GetAttribute("OrigPlaceholder")
         if not origPh and inst.PlaceholderText ~= "" then origPh = inst.PlaceholderText; inst:SetAttribute("OrigPlaceholder", origPh) end
-        if origPh then inst.PlaceholderText = translateVenyxText(origPh) end
+        if origPh then inst.PlaceholderText = translateTLN CHEATText(origPh) end
         return
     end
     local rawText = inst.Text
     if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
     local original = inst:GetAttribute("OrigRawText")
     if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
-    local mapped = translateVenyxText(original)
+    local mapped = translateTLN CHEATText(original)
     if inst.Text ~= mapped then
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
@@ -437,7 +538,7 @@ local function refreshAllTranslations()
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
 
-local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
+local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     local pill = statusLbl.Parent
     if not (pill and pill:IsA("GuiObject")) then return end
     local badHitbox = pill:FindFirstChild("IslandClickHitbox")
@@ -508,7 +609,7 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
         task.defer(function() statusLbl:SetAttribute("__Updating", false) end)
     end
     GlobalRefreshIslandStatus = function() updateStatusText(true) end
-    if statusLbl:GetAttribute("__IslandDone") and venyxGui:FindFirstChild("ChilliV5_ExpandedIsland") then
+    if statusLbl:GetAttribute("__IslandDone") and tlnGui:FindFirstChild("ChilliV5_ExpandedIsland") then
         updateStatusText(true); return
     end
     statusLbl:SetAttribute("__IslandDone", true)
@@ -516,7 +617,7 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     local txtGrad = statusLbl:FindFirstChild("TextRainbow") or Instance.new("UIGradient")
     txtGrad.Name = "TextRainbow"; txtGrad.Color = COLOR_SEQ_RAINBOW; txtGrad.Parent = statusLbl
     table.insert(ActiveGradients, txtGrad)
-    pill.Parent = venyxGui; pill.AnchorPoint = Vector2.new(0.5, 0)
+    pill.Parent = tlnGui; pill.AnchorPoint = Vector2.new(0.5, 0)
     pill.Position = UDim2.new(0.5, 0, 0, 10); pill.ZIndex = 9999
     pill.Active = true; statusLbl.Active = true; expandHint.Active = true
     local pillCorner = pill:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
@@ -528,10 +629,10 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     local strokeGrad = pillStroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = pillStroke
     table.insert(ActiveGradients, strokeGrad)
-    local oldExp = venyxGui:FindFirstChild("ChilliV5_ExpandedIsland")
+    local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
     local ExpandedIsland = Instance.new("Frame")
-    ExpandedIsland.Name = "Chilli_ExpandedIsland"
+    ExpandedIsland.Name = "ChilliV5_ExpandedIsland"
     ExpandedIsland.AnchorPoint = Vector2.new(0.5, 0)
     ExpandedIsland.Position = pill.Position
     ExpandedIsland.Size = UDim2.new(0, 260, 0, 78)
@@ -539,7 +640,7 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     ExpandedIsland.BackgroundTransparency = 0
     ExpandedIsland.BorderSizePixel = 0
     ExpandedIsland.Visible = false; ExpandedIsland.Active = true
-    ExpandedIsland.ZIndex = 10000; ExpandedIsland.Parent = venyxGui
+    ExpandedIsland.ZIndex = 10000; ExpandedIsland.Parent = tlnGui
     local ExpCorner = Instance.new("UICorner")
     ExpCorner.CornerRadius = UDim.new(0, 16); ExpCorner.Parent = ExpandedIsland
     local ExpStroke = Instance.new("UIStroke")
@@ -659,7 +760,7 @@ local function setupUnclippedCircularLogo(targetObj)
     if topPanel:GetAttribute("__FloatingLogoV5Perfect") then return end
     local sz = topPanel.AbsoluteSize; local pos = topPanel.AbsolutePosition
     if sz.X > 105 or sz.Y > 105 or sz.X < 28 or math.abs(sz.X - sz.Y) > 25 or pos.X > 350 then return end
-    topPanel:SetAttribute("__FloatingLogoPerfect", true)
+    topPanel:SetAttribute("__FloatingLogoV5Perfect", true)
     local container = topPanel
     for _, child in ipairs(container:GetDescendants()) do
         if child:IsA("UIPadding") or child:IsA("UIAspectRatioConstraint") or child:IsA("UISizeConstraint") then
@@ -731,7 +832,7 @@ local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
     end
 end
 
-local function tryPatchVenyx()
+local function tryPatchTLN CHEAT()
     for _, root in ipairs(roots) do
         if root then
             for _, gui in ipairs(root:GetChildren()) do
@@ -745,7 +846,7 @@ local function tryPatchVenyx()
                     for _, d in ipairs(gui:GetDescendants()) do
                         if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d:FindFirstAncestorOfClass("ScrollingFrame") then
                             local t = d.Text
-                            if t == "VENYX" or t == NEW_TITLE then titleLbl = d; break end
+                            if t == "TLN CHEAT" or t == NEW_TITLE then titleLbl = d; break end
                         end
                     end
                     if titleLbl then
@@ -795,7 +896,7 @@ local function tryPatchVenyx()
                                     hookTextForTranslation(desc)
                                 end
                             elseif (desc:IsA("ImageLabel") or desc:IsA("ImageButton"))
-                            and desc.Name ~= "ChilliCoverLogo" and desc.Name ~= "ChilliHeaderLogo"
+                            and desc.Name ~= "ChilliV5CoverLogo" and desc.Name ~= "ChilliHeaderLogo"
                             and desc.Name ~= "InnerChilliLogo" then
                                 if not desc:FindFirstAncestorOfClass("ScrollingFrame") then
                                     if mainWindow and not desc:IsDescendantOf(mainWindow) then
@@ -811,10 +912,10 @@ local function tryPatchVenyx()
     end
 end
 
-pcall(tryPatchVenyx)
+pcall(tryPatchTLN CHEAT)
 task.spawn(function()
     for _ = 1, 20 do
         task.wait(0.5)
-        pcall(tryPatchVenyx)
+        pcall(tryPatchTLN CHEAT)
     end
 end)
