@@ -1,5 +1,5 @@
 -- ==============================================================================
---  TLN CHEAT V5 - VENYXHUB NEW LOADER EDITION (FULL FEATURES & TRANSLATION)
+--  TLN CHEAT - VENYXHUB NEW LOADER
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
@@ -8,7 +8,7 @@ local CHILLI_LOGO_ID = "rbxassetid://100224396235670"
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
--- 1. KHỞI CHẠY SCRIPT VENYXHUB MỚI
+-- 1. KHỞI CHẠY SCRIPT TLNCHEAT MỚI
 if not getgenv().__VenyxV5NewLoaded then
     getgenv().__VenyxV5NewLoaded = true
     task.spawn(function()
@@ -160,6 +160,130 @@ local EXACT_MATCH_VI = {
 
     ["MONEY /S"] = "TIỀN /GIÂY",
     ["OPEN"] = "MỞ",
+
+    -- WEBHOOK
+    ["WEBHOOK DISCORD"] = "WEBHOOK TELEGRAM",
+    ["Ping user ID"] = "Ping user ID",
+    ["Ping role ID"] = "Ping role ID",
+    ["Discord user ID"] = "Telegram user ID",
+    ["Discord role ID"] = "Telegram role ID",
+
+    -- GIAO DIỆN
+    ["UI scale"] = "Tỉ lệ giao diện",
+    ["Show/hide UI"] = "Hiện/Ẩn menu",
+    ["Opacity"] = "Độ trong suốt",
+    ["Tone"] = "Tông màu",
+    ["Dim the game"] = "Làm tối màn hình",
+    ["INTERFACE"] = "GIAO DIỆN",
+    ["Interface"] = "Giao Diện",
+    ["QUICK BARS"] = "THANH NHANH",
+    ["Show quick bars"] = "Hiện thanh nhanh",
+    ["Keybinds"] = "Phím tắt",
+    ["Bar size"] = "Kích thước thanh",
+    ["PINS AND KEYBINDS"] = "GHIM & PHÍM TẮT",
+    ["Find an option"] = "Tìm tùy chọn",
+    ["All"] = "Tất cả",
+    ["Pinned"] = "Đã ghim",
+    ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
+    ["Delivery speed"] = "Tốc độ mang về",
+    ["Delivery speed slider"] = "Tốc độ mang về",
+    ["Tween speed slider"] = "Tốc độ bay",
+    ["Instant steps"] = "Bước tức thì",
+    ["Instant steps slider"] = "Bước tức thì",
+    ["slider"] = "thanh trượt",
+    ["+ PIN"] = "+ GHIM",
+
+    -- THEME
+    ["THEME"] = "GIAO DIỆN MÀU SẮC",
+    ["Twilight"] = "Hoàng Hôn",
+    ["Aurora"] = "Bắc Cực Quang",
+    ["Ocean"] = "Đại Dương",
+    ["Midnight"] = "Nửa Đêm",
+    ["Sakura"] = "Hoa Anh Đào",
+    ["Onyx"] = "Onyx",
+    ["Mono"] = "Đơn Sắc",
+    ["GAME HUD"] = "HUD GAME",
+    ["Steal panel button on game HUD"] = "Nút bảng cướp trên HUD game",
+
+    -- DEFAULTS
+    ["DEFAULTS"] = "MẶC ĐỊNH",
+    ["Reset to defaults"] = "Đặt lại mặc định",
+    ["Turn off all toggles"] = "Tắt tất cả nút bật/tắt",
+    ["Turn off"] = "Tắt tất cả",
+    ["Reset"] = "Đặt lại",
+    ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
+    ["Clear all keybinds"] = "Xóa tất cả phím tắt",
+
+    -- CONFIG
+    ["CONFIG"] = "CẤU HÌNH",
+    ["Config"] = "Cấu Hình",
+    ["ACTIVE"] = "ĐANG DÙNG",
+    ["SAVED CONFIGS"] = "CẤU HÌNH ĐÃ LƯU",
+    ["Set as active config"] = "Đặt làm cấu hình hiện tại",
+    ["Set active"] = "Đặt làm mặc định",
+    ["Save changes"] = "Lưu thay đổi",
+    ["Save"] = "Lưu",
+    ["Auto load"] = "Tự tải",
+    ["Auto save"] = "Tự lưu",
+    ["PROFILES"] = "HỒ SƠ",
+    ["New config name"] = "Tên cấu hình mới",
+    ["Auto if empty"] = "Tự đặt tên nếu trống",
+    ["Create config"] = "Tạo cấu hình",
+    ["Create"] = "Tạo",
+    ["Pick to delete"] = "Chọn để xóa",
+    ["Delete picked"] = "Xóa đã chọn",
+    ["Delete"] = "Xóa",
+    ["Restore deleted"] = "Khôi phục đã xóa",
+    ["Export config"] = "Xuất cấu hình",
+    ["Import text"] = "Nhập văn bản",
+    ["Paste config text"] = "Dán văn bản cấu hình",
+    ["Import config"] = "Nhập cấu hình",
+    ["Import"] = "Nhập",
+
+    -- SỰ KIỆN HALLOWEEN
+    ["HALLOWEEN"] = "HALLOWEEN",
+    ["HALLOWEEN DIMENSION"] = "CHIỀU KHÔNG GIAN HALLOWEEN",
+    ["Auto steal Halloween eggs"] = "Tự động cướp trứng Halloween",
+    ["Instant steal Halloween eggs"] = "Cướp tức thì trứng Halloween",
+    ["Steal speed"] = "Tốc độ cướp",
+    ["Halloween eggs"] = "Trứng Halloween",
+    ["Halloween rarities"] = "Độ hiếm Halloween",
+    ["Auto Pumpkin Moon"] = "Tự động Pumpkin Moon",
+    ["Auto buy Halloween Dimension Egg"] = "Tự mua trứng Halloween Dimension",
+    ["MONSTERS"] = "QUÁI VẬT",
+    ["Auto farm monsters"] = "Tự động cày quái vật",
+    ["Monsters"] = "Quái vật",
+    ["Monster order"] = "Thứ tự quái",
+    ["PHANTOM EXPRESS"] = "TÀU MA PHANTOM",
+    ["TRAIN"] = "TÀU HỎA",
+    ["Not here"] = "Không có mặt",
+    ["SOULS"] = "LINH HỒN",
+    ["Auto Phantom Express"] = "Tự động Phantom Express",
+    ["Auto vacuum Ghouler boss"] = "Tự hút boss Ghouler",
+    ["Ghost target"] = "Mục tiêu ma",
+    ["Rarest first"] = "Hiếm nhất trước",
+    ["Walk speed"] = "Tốc độ đi bộ",
+    ["Auto trade souls"] = "Tự đổi linh hồn",
+    ["GHOST DOG AND FISHING"] = "CHÓ MA VÀ CÂU CÁ",
+    ["QUEST"] = "NHIỆM VỤ",
+    ["FISH CAUGHT"] = "CÁ BẮT ĐƯỢC",
+    ["Done"] = "Hoàn thành",
+    ["Auto Ghost Dog quest"] = "Tự làm nhiệm vụ Chó Ma",
+    ["Auto fishing"] = "Tự động câu cá",
+    ["Cast luck"] = "Độ may khi câu",
+    ["x1.5 Perfect"] = "x1.5 Hoàn hảo",
+
+    -- CURSED ISLAND WARS
+    ["CURSED ISLAND WARS"] = "ĐẢO NGUYỀN RỦAL",
+    ["Auto play Cursed Island Wars"] = "Tự chơi Cursed Island Wars",
+    ["Island Wars target"] = "Mục tiêu Island Wars",
+    ["Enemies and base"] = "Kẻ thù và căn cứ",
+    ["Enemies"] = "Kẻ thù",
+    ["Base only"] = "Chỉ căn cứ",
+
+    -- MISC
+    ["Mặc định"] = "Mặc định",
+    ["Không có"] = "Không có",
 
     ["Beta version"] = "Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."] = "Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
@@ -1414,60 +1538,102 @@ task.spawn(function()
     end
 end)
 
--- ==================== TELEGRAM LINK HOOK ====================
--- Thay thế nút Discord → mở / copy link Telegram
+-- ==================== FULL UI PATCH: TELEGRAM + WHAT'S NEW + CHILLI HUB ====================
 task.spawn(function()
-    local hooked = {}
-    local function hookTelegramButtons(gui)
-        for _, desc in ipairs(gui:GetDescendants()) do
-            if (desc:IsA("TextButton") or desc:IsA("TextLabel")) and not hooked[desc] then
-                local t = (desc.Text or ""):lower()
-                if t:find("discord") or t:find("telegram") or t:find("copy invite") or t:find("chép link") then
-                    hooked[desc] = true
-                    if desc:IsA("TextButton") then
-                        desc.MouseButton1Click:Connect(function()
-                            pcall(function()
-                                if setclipboard then
-                                    setclipboard(TELEGRAM_LINK)
-                                end
-                            end)
-                        end)
+    -- 1. HOOK setclipboard toàn cục: chặn discord.gg → thay bằng Telegram
+    if setclipboard then
+        local origClipboard = setclipboard
+        setclipboard = function(text)
+            if type(text) == "string" and text:find("discord%.gg") then
+                origClipboard(TELEGRAM_LINK)
+            else
+                origClipboard(text)
+            end
+        end
+    end
+
+    local patched = {}
+
+    local function patchGui(gui)
+        if not gui:IsA("ScreenGui") then return end
+
+        local function scanDesc(desc)
+            -- 2. Ẩn WHAT'S NEW frame
+            if desc:IsA("Frame") or desc:IsA("ScrollingFrame") then
+                local name = desc.Name:lower()
+                if name:find("whatsnew") or name:find("whats_new") or name:find("changelog") or name:find("news") then
+                    desc.Visible = false
+                    return
+                end
+                -- check by title label inside
+                for _, child in ipairs(desc:GetChildren()) do
+                    if (child:IsA("TextLabel") or child:IsA("TextButton")) then
+                        local t = child.Text or ""
+                        if t == "WHAT'S NEW" or t == "CÓ GÌ MỚI" then
+                            desc.Visible = false
+                            break
+                        end
                     end
+                end
+            end
+
+            -- 3. Đổi "Chilli Hub" → "TLN CHEAT" trên nút
+            if (desc:IsA("TextButton") or desc:IsA("TextLabel")) and not patched[desc] then
+                local t = desc.Text or ""
+                if t == "Chilli Hub" or t == "Chilli hub" or t == "CHILLI HUB" then
+                    patched[desc] = true
+                    desc.Text = "TLN CHEAT"
+                    desc:GetPropertyChangedSignal("Text"):Connect(function()
+                        if desc.Text ~= "TLN CHEAT" then
+                            desc.Text = "TLN CHEAT"
+                        end
+                    end)
+                end
+            end
+
+            -- 4. Hook nút Copy Invite / Telegram
+            if desc:IsA("TextButton") and not patched[desc] then
+                local t = (desc.Text or ""):lower()
+                if t:find("copy invite") or t:find("chép link") or t:find("copy") and t:find("invite") then
+                    patched[desc] = true
+                    desc.MouseButton1Click:Connect(function()
+                        pcall(function()
+                            if setclipboard then setclipboard(TELEGRAM_LINK) end
+                        end)
+                    end)
+                end
+            end
+
+            -- 5. Đổi icon Discord card (ImageLabel màu tím) → ẩn
+            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
+                -- nếu có màu nền tím (discord color) thì đổi
+                local bg = desc.BackgroundColor3
+                if bg and bg.R > 0.3 and bg.G < 0.4 and bg.B > 0.7 then
+                    desc.BackgroundColor3 = Color3.fromRGB(30, 167, 132) -- teal Telegram
                 end
             end
         end
+
+        for _, desc in ipairs(gui:GetDescendants()) do
+            pcall(scanDesc, desc)
+        end
+
         gui.DescendantAdded:Connect(function(newDesc)
-            if (newDesc:IsA("TextButton")) and not hooked[newDesc] then
-                task.defer(function()
-                    local t = (newDesc.Text or ""):lower()
-                    if t:find("discord") or t:find("telegram") or t:find("copy invite") or t:find("chép link") then
-                        hooked[newDesc] = true
-                        newDesc.MouseButton1Click:Connect(function()
-                            pcall(function()
-                                if setclipboard then
-                                    setclipboard(TELEGRAM_LINK)
-                                end
-                            end)
-                        end)
-                    end
-                end)
-            end
+            task.defer(function()
+                pcall(scanDesc, newDesc)
+            end)
         end)
     end
 
-    for _, root in ipairs(roots) do
-        if root then
-            for _, gui in ipairs(root:GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    pcall(hookTelegramButtons, gui)
+    -- chạy liên tục 30 giây đầu để bắt kịp VenyxHub load xong
+    for i = 1, 60 do
+        task.wait(0.5)
+        for _, root in ipairs(roots) do
+            if root then
+                for _, gui in ipairs(root:GetChildren()) do
+                    pcall(patchGui, gui)
                 end
             end
-            root.ChildAdded:Connect(function(child)
-                if child:IsA("ScreenGui") then
-                    task.wait(0.3)
-                    pcall(hookTelegramButtons, child)
-                end
-            end)
         end
     end
 end)
