@@ -1,17 +1,17 @@
 -- ==============================================================================
---  TLN CHEAT - FULL FEATURES & TRANSLATION
+--  TLN CHEAT - TLN CHEATHUB NEW LOADER EDITION (FULL FEATURES & TRANSLATION)
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
-local CHILLI_LOGO_ID = "rbxassetid://100224396235670" --
+local CHILLI_LOGO_ID = "rbxassetid://100224396235670" -- Thay ID logo ở đây nếu có
 local LOGO_BG_COLOR = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
-if not getgenv().__TLNCV5NewLoaded then
-    getgenv().__TLNCV5NewLoaded = true
+if not getgenv().__TLN CHEATV5NewLoaded then
+    getgenv().__TLN CHEATV5NewLoaded = true
     task.spawn(function()
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/TLN CHEAT/main/TLN CHEAT"))()
         end)
     end)
 end
@@ -121,7 +121,8 @@ local EXACT_MATCH_VI = {
     ["Catching butterfly"] = "Đang bắt bướm",["Joining race"] = "Đang vào đường đua",
     ["Racing"] = "Đang đua xe",["Home"] = "Trang Chủ",["Dashboard"] = "Bảng Điều Khiển",
     ["Welcome back"] = "Chào mừng trở lại",["TLN CHEAT Discord"] = "TLN CHEAT Discord",
-    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời", ["Discord"] = "Discord",["MONEY /S"] = "TIỀN /GIÂY",["OPEN"] = "MỞ",
+    ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",["Copy Invite"] = "Chép Link Mời", ["Discord"] = "Discord",
+    ["Discord"] = "Discord",["MONEY /S"] = "TIỀN /GIÂY",["OPEN"] = "MỞ",
     ["Welcome to TLN CHEAT 1.0.0! Join our Discord for updates and support"] = "Chào mừng tới TLN CHEAT! Tham gia Discord để cập nhật và nhận hỗ trợ",
     ["Beta version"] = "Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."] = "Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
@@ -137,7 +138,7 @@ local EXACT_MATCH_VI = {
     ["EGG PREDICTOR"] = "DỰ ĐOÁN TRỨNG",["Go to egg"] = "Di chuyển tới trứng",
     ["Teleport to egg"] = "Dịch chuyển tới trứng",["Tween"] = "Bay (Tween)",
     ["Delivery method"] = "Cách mang về",["Fast tween speed"] = "Tốc độ bay nhanh",
-    ["Tween speed"] = "Tốc độ bay",["Steal missing index eggs"] = "Cướp trứng thiếu trong Chỉ mục",
+    ["Steal missing index eggs"] = "Cướp trứng thiếu trong Chỉ mục",
     ["Steal back from players"] = "Cướp lại từ người chơi",["Anti guard"] = "Chống vệ sĩ",
     ["Drop eggs at safe zone"] = "Thả trứng ở vùng an toàn",["FILTER"] = "BỘ LỌC",
     ["Zones"] = "Khu vực",["None"] = "Không có",["Steal first"] = "Ưu tiên cướp",
@@ -388,8 +389,83 @@ local EXACT_MATCH_VI = {
     ["Pinned"] = "Đã ghim",
     ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
     ["Clear all keybinds"] = "Xóa tất cả phím tắt",
+    ["Tween speed"] = "Tốc độ bay (Tween)",
     ["Instant steps"] = "Bước tức thì",
     ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
+
+    -- ══════════════════════════════════════════════════════════════════
+    -- VIỆT HÓA CHỨC NĂNG MỚI — bổ sung v1.1.0
+    -- ══════════════════════════════════════════════════════════════════
+
+    -- Label dropdown (khác ["MONSTERS"] section header)
+    ["Monsters"] = "Quái Vật",
+
+    -- Descriptor type hiển thị trong Pins list
+    ["slider"] = "thanh trượt",
+
+    -- Tên sự kiện / event độc lập (dùng trong status ghép và label)
+    ["Capture the egg"]      = "Cướp Trứng Sự Kiện",
+    ["Cursed Island Wars"]   = "Chiến Đảo Nguyền Rủa",
+    ["Phantom Express"]      = "Tàu Ma (Phantom Express)",
+    ["Ghost Dog"]            = "Chó Ma",
+    ["Pumpkin Moon"]         = "Mặt Trăng Bí Ngô",
+    ["Halloween Dimension"]  = "Chiều Không Gian Halloween",
+    ["Ghouler"]              = "Ghouler",
+
+    -- Chuỗi status "Waiting for <event>" đầy đủ
+    ["Waiting for Capture the egg"]    = "Đang chờ Cướp Trứng Sự Kiện",
+    ["Waiting for Cursed Island Wars"] = "Đang chờ Chiến Đảo Nguyền Rủa",
+
+    -- Admin (AA) — tab label đầy đủ
+    ["Admin (AA)"] = "Admin (AA)",
+
+    -- Phantom Express — thêm trạng thái
+    ["Farming souls"] = "Đang farm linh hồn",
+    ["Trading souls"]  = "Đang đổi linh hồn",
+    ["Boarding train"] = "Đang lên tàu",
+
+    -- Ghost Dog & Fishing — trạng thái
+    ["Doing quest"]   = "Đang làm nhiệm vụ",
+    ["Fishing"]       = "Đang câu cá",
+    ["Casting rod"]   = "Đang thả cần câu",
+
+    -- Cursed Island Wars — trạng thái
+    ["Playing Island Wars"] = "Đang chơi Chiến Đảo",
+    ["Attacking base"]      = "Đang tấn công căn cứ",
+    ["Attacking enemies"]   = "Đang tấn công kẻ thù",
+    ["Waiting for Island Wars"] = "Đang chờ Chiến Đảo Nguyền Rủa",
+
+    -- Capture the Egg — trạng thái
+    ["Holding egg"]       = "Đang cầm trứng sự kiện",
+    ["Evading holders"]   = "Đang né người cầm trứng",
+    ["Stealing event egg"]= "Đang cướp trứng sự kiện",
+
+    -- Minigame eggs
+    ["Waiting for minigame"] = "Đang chờ minigame",
+    ["Playing minigame"]     = "Đang chơi minigame",
+
+    -- Halloween Dimension — trạng thái
+    ["Stealing Halloween egg"] = "Đang cướp trứng Halloween",
+    ["Farming monsters"]       = "Đang farm quái vật",
+    ["Killing monster"]        = "Đang tiêu diệt quái vật",
+
+    -- Teleport zones hiển thị
+    ["Enchanted Forest..."] = "Rừng Phù Phép...",
+    ["Light Dark..."]       = "Sáng Tối...",
+    ["Titan Temple..."]     = "Đền Titan...",
+
+    -- Quick Bars — label pin với descriptor
+    ["Tween speed slider"]    = "Tốc độ bay (thanh trượt)",
+    ["Delivery speed slider"] = "Tốc độ giao trứng (thanh trượt)",
+    ["Instant steps slider"]  = "Bước tức thì (thanh trượt)",
+
+    -- Misc còn thiếu
+    ["Steal from other players"] = "Cướp từ người chơi khác",
+    ["Awaiting"] = "Đang chờ",
+    ["Not found"] = "Không tìm thấy",
+    ["Loading"] = "Đang tải",
+    ["Connecting"] = "Đang kết nối",
+    ["Disconnected"] = "Đã mất kết nối",
 }
 
 local STATUS_ACTION_PATTERNS_VI = {
@@ -413,6 +489,11 @@ local STATUS_ACTION_PATTERNS_VI = {
     {pat="^[Ff]using (.+)$",rep="Đang dung hợp %1"},
     {pat="^[Cc]atching (.+)$",rep="Đang bắt %1"},
     {pat="^[Ww]aiting for (.+)$",rep="Đang chờ %1"},
+    {pat="^[Ff]arming (.+)$",rep="Đang farm %1"},
+    {pat="^[Kk]illing (.+)$",rep="Đang tiêu diệt %1"},
+    {pat="^[Aa]ttacking (.+)$",rep="Đang tấn công %1"},
+    {pat="^[Hh]olding (.+)$",rep="Đang cầm %1"},
+    {pat="^[Bb]oarding (.+)$",rep="Đang lên %1"},
 }
 
 local FALLBACK_VERB_PREFIX_VI = {
@@ -423,6 +504,9 @@ local FALLBACK_VERB_PREFIX_VI = {
     ["Catching "]="Đang bắt ",["Waiting "]="Đang chờ ",["Claiming "]="Đang nhận ",
     ["Upgrading "]="Đang nâng cấp ",["Buying "]="Đang mua ",["Collecting "]="Đang thu thập ",
     ["Dropping "]="Đang thả ",["Returning "]="Đang quay về ",["Avoiding "]="Đang né ",
+    ["Farming "]="Đang farm ",["Killing "]="Đang tiêu diệt ",["Attacking "]="Đang tấn công ",
+    ["Holding "]="Đang cầm ",["Boarding "]="Đang lên ",["Fishing "]="Đang câu ",
+    ["Casting "]="Đang thả ",["Playing "]="Đang chơi ",["Trading "]="Đang đổi ",
 }
 
 local DYNAMIC_PATTERNS_VI = {
@@ -462,7 +546,7 @@ local function translateStatusAction(cleanEn)
     FastCache[cacheKey] = result; return result
 end
 
-local function translateTLNCHEATText(raw)
+local function translateTLN CHEATText(raw)
     if not raw or raw == "" then return raw end
     local cacheKey = currentLanguage .. "|" .. raw
     if FastCache[cacheKey] then return FastCache[cacheKey] end
@@ -494,14 +578,14 @@ local function applyElementTranslation(inst)
     if inst:IsA("TextBox") then
         local origPh = inst:GetAttribute("OrigPlaceholder")
         if not origPh and inst.PlaceholderText ~= "" then origPh = inst.PlaceholderText; inst:SetAttribute("OrigPlaceholder", origPh) end
-        if origPh then inst.PlaceholderText = translateTLNCHEATText(origPh) end
+        if origPh then inst.PlaceholderText = translateTLN CHEATText(origPh) end
         return
     end
     local rawText = inst.Text
     if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
     local original = inst:GetAttribute("OrigRawText")
     if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
-    local mapped = translateTLNCHEATText(original)
+    local mapped = translateTLN CHEATText(original)
     if inst.Text ~= mapped then
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
@@ -830,7 +914,7 @@ local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
     end
 end
 
-local function tryPatchTLNCHEAT()
+local function tryPatchTLN CHEAT()
     for _, root in ipairs(roots) do
         if root then
             for _, gui in ipairs(root:GetChildren()) do
@@ -910,10 +994,10 @@ local function tryPatchTLNCHEAT()
     end
 end
 
-pcall(tryPatchTLNCHEAT)
+pcall(tryPatchTLN CHEAT)
 task.spawn(function()
     for _ = 1, 20 do
         task.wait(0.5)
-        pcall(tryPatchTLNCHEAT)
+        pcall(tryPatchTLN CHEAT)
     end
 end)
