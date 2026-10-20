@@ -1,5 +1,5 @@
 -- ==============================================================================
---  TLN CHEAT - VENYXHUB NEW LOADER
+--  TLN CHEAT
 -- ==============================================================================
 
 local NEW_TITLE = "TLN CHEAT"
@@ -75,25 +75,17 @@ end
 
 local function hookFakeFpsCounter(lbl)
     if not (lbl:IsA("TextLabel") or lbl:IsA("TextButton")) then return end
-
     local function applyFakeFps()
         if lbl:GetAttribute("__UpdatingFps") then return end
         local raw = lbl.Text
         if not isFpsCounterText(raw) then return end
-
         lbl:SetAttribute("__UpdatingFps", true)
         local fakeVal = generateNextFakeFps()
         local patched = raw:gsub("%d+%s*FPS", tostring(fakeVal) .. " FPS", 1)
-        if lbl.Text ~= patched then
-            lbl.Text = patched
-        end
-        task.defer(function()
-            lbl:SetAttribute("__UpdatingFps", false)
-        end)
+        if lbl.Text ~= patched then lbl.Text = patched end
+        task.defer(function() lbl:SetAttribute("__UpdatingFps", false) end)
     end
-
     applyFakeFps()
-
     if not lbl:GetAttribute("__FpsHooked") then
         lbl:SetAttribute("__FpsHooked", true)
         lbl:GetPropertyChangedSignal("Text"):Connect(function()
@@ -101,19 +93,16 @@ local function hookFakeFpsCounter(lbl)
                 applyFakeFps()
             end
         end)
-
         task.spawn(function()
             while lbl and lbl.Parent do
                 task.wait(0.7)
-                if isFpsCounterText(lbl.Text) then
-                    applyFakeFps()
-                end
+                if isFpsCounterText(lbl.Text) then applyFakeFps() end
             end
         end)
     end
 end
 
--- ==================== 3. HỆ THỐNG TỪ ĐIỂN DỊCH THUẬT ====================
+-- ==================== 3. TỪ ĐIỂN DỊCH THUẬT ====================
 local currentLanguage = "VI"
 local FastCache = {}
 local TrackedTexts = {}
@@ -157,134 +146,24 @@ local EXACT_MATCH_VI = {
     ["Updates, keys, support"] = "Cập nhật, nhận key, hỗ trợ",
     ["Copy Invite"] = "Chép Link Telegram",
     ["Discord"] = "Telegram",
-
     ["MONEY /S"] = "TIỀN /GIÂY",
     ["OPEN"] = "MỞ",
-
     -- WEBHOOK
     ["WEBHOOK DISCORD"] = "WEBHOOK TELEGRAM",
-    ["Ping user ID"] = "Ping user ID",
-    ["Ping role ID"] = "Ping role ID",
     ["Discord user ID"] = "Telegram user ID",
     ["Discord role ID"] = "Telegram role ID",
-
-    -- GIAO DIỆN
-    ["UI scale"] = "Tỉ lệ giao diện",
-    ["Show/hide UI"] = "Hiện/Ẩn menu",
-    ["Opacity"] = "Độ trong suốt",
-    ["Tone"] = "Tông màu",
-    ["Dim the game"] = "Làm tối màn hình",
-    ["INTERFACE"] = "GIAO DIỆN",
-    ["Interface"] = "Giao Diện",
-    ["QUICK BARS"] = "THANH NHANH",
-    ["Show quick bars"] = "Hiện thanh nhanh",
-    ["Keybinds"] = "Phím tắt",
-    ["Bar size"] = "Kích thước thanh",
-    ["PINS AND KEYBINDS"] = "GHIM & PHÍM TẮT",
-    ["Find an option"] = "Tìm tùy chọn",
-    ["All"] = "Tất cả",
-    ["Pinned"] = "Đã ghim",
-    ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
-    ["Delivery speed"] = "Tốc độ mang về",
-    ["Delivery speed slider"] = "Tốc độ mang về",
-    ["Tween speed slider"] = "Tốc độ bay",
-    ["Instant steps"] = "Bước tức thì",
-    ["Instant steps slider"] = "Bước tức thì",
-    ["slider"] = "thanh trượt",
-    ["+ PIN"] = "+ GHIM",
-
-    -- THEME
-    ["THEME"] = "GIAO DIỆN MÀU SẮC",
-    ["Twilight"] = "Hoàng Hôn",
-    ["Aurora"] = "Bắc Cực Quang",
-    ["Ocean"] = "Đại Dương",
-    ["Midnight"] = "Nửa Đêm",
-    ["Sakura"] = "Hoa Anh Đào",
-    ["Onyx"] = "Onyx",
-    ["Mono"] = "Đơn Sắc",
-    ["GAME HUD"] = "HUD GAME",
-    ["Steal panel button on game HUD"] = "Nút bảng cướp trên HUD game",
-
-    -- DEFAULTS
-    ["DEFAULTS"] = "MẶC ĐỊNH",
-    ["Reset to defaults"] = "Đặt lại mặc định",
-    ["Turn off all toggles"] = "Tắt tất cả nút bật/tắt",
-    ["Turn off"] = "Tắt tất cả",
-    ["Reset"] = "Đặt lại",
-    ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
-    ["Clear all keybinds"] = "Xóa tất cả phím tắt",
-
-    -- CONFIG
-    ["CONFIG"] = "CẤU HÌNH",
-    ["Config"] = "Cấu Hình",
-    ["ACTIVE"] = "ĐANG DÙNG",
-    ["SAVED CONFIGS"] = "CẤU HÌNH ĐÃ LƯU",
-    ["Set as active config"] = "Đặt làm cấu hình hiện tại",
-    ["Set active"] = "Đặt làm mặc định",
-    ["Save changes"] = "Lưu thay đổi",
-    ["Save"] = "Lưu",
-    ["Auto load"] = "Tự tải",
-    ["Auto save"] = "Tự lưu",
-    ["PROFILES"] = "HỒ SƠ",
-    ["New config name"] = "Tên cấu hình mới",
-    ["Auto if empty"] = "Tự đặt tên nếu trống",
-    ["Create config"] = "Tạo cấu hình",
-    ["Create"] = "Tạo",
-    ["Pick to delete"] = "Chọn để xóa",
-    ["Delete picked"] = "Xóa đã chọn",
-    ["Delete"] = "Xóa",
-    ["Restore deleted"] = "Khôi phục đã xóa",
-    ["Export config"] = "Xuất cấu hình",
-    ["Import text"] = "Nhập văn bản",
-    ["Paste config text"] = "Dán văn bản cấu hình",
-    ["Import config"] = "Nhập cấu hình",
-    ["Import"] = "Nhập",
-
-    -- SỰ KIỆN HALLOWEEN
-    ["HALLOWEEN"] = "HALLOWEEN",
-    ["HALLOWEEN DIMENSION"] = "CHIỀU KHÔNG GIAN HALLOWEEN",
-    ["Auto steal Halloween eggs"] = "Tự động cướp trứng Halloween",
-    ["Instant steal Halloween eggs"] = "Cướp tức thì trứng Halloween",
-    ["Steal speed"] = "Tốc độ cướp",
-    ["Halloween eggs"] = "Trứng Halloween",
-    ["Halloween rarities"] = "Độ hiếm Halloween",
-    ["Auto Pumpkin Moon"] = "Tự động Pumpkin Moon",
-    ["Auto buy Halloween Dimension Egg"] = "Tự mua trứng Halloween Dimension",
-    ["MONSTERS"] = "QUÁI VẬT",
-    ["Auto farm monsters"] = "Tự động cày quái vật",
-    ["Monsters"] = "Quái vật",
-    ["Monster order"] = "Thứ tự quái",
-    ["PHANTOM EXPRESS"] = "TÀU MA PHANTOM",
-    ["TRAIN"] = "TÀU HỎA",
-    ["Not here"] = "Không có mặt",
-    ["SOULS"] = "LINH HỒN",
-    ["Auto Phantom Express"] = "Tự động Phantom Express",
-    ["Auto vacuum Ghouler boss"] = "Tự hút boss Ghouler",
-    ["Ghost target"] = "Mục tiêu ma",
-    ["Rarest first"] = "Hiếm nhất trước",
-    ["Walk speed"] = "Tốc độ đi bộ",
-    ["Auto trade souls"] = "Tự đổi linh hồn",
-    ["GHOST DOG AND FISHING"] = "CHÓ MA VÀ CÂU CÁ",
-    ["QUEST"] = "NHIỆM VỤ",
-    ["FISH CAUGHT"] = "CÁ BẮT ĐƯỢC",
-    ["Done"] = "Hoàn thành",
-    ["Auto Ghost Dog quest"] = "Tự làm nhiệm vụ Chó Ma",
-    ["Auto fishing"] = "Tự động câu cá",
-    ["Cast luck"] = "Độ may khi câu",
-    ["x1.5 Perfect"] = "x1.5 Hoàn hảo",
-
-    -- CURSED ISLAND WARS
-    ["CURSED ISLAND WARS"] = "ĐẢO NGUYỀN RỦAL",
-    ["Auto play Cursed Island Wars"] = "Tự chơi Cursed Island Wars",
-    ["Island Wars target"] = "Mục tiêu Island Wars",
-    ["Enemies and base"] = "Kẻ thù và căn cứ",
-    ["Enemies"] = "Kẻ thù",
-    ["Base only"] = "Chỉ căn cứ",
-
-    -- MISC
-    ["Mặc định"] = "Mặc định",
-    ["Không có"] = "Không có",
-
+    ["Ping user ID"] = "Ping user ID",
+    ["Ping role ID"] = "Ping role ID",
+    ["DISCORD WEBHOOK"] = "WEBHOOK TELEGRAM",
+    ["Webhook URL"] = "Đường dẫn Webhook",
+    ["Ping everyone"] = "Tag @everyone",
+    ["WHAT TO POST"] = "NỘI DUNG GỬI BÁO CÁO",
+    ["Post stolen eggs"] = "Báo cáo trứng cướp được",
+    ["Post fused eggs"] = "Báo cáo trứng dung hợp",
+    ["POSTED"] = "ĐÃ GỬI",
+    ["Send a test post"] = "Gửi tin nhắn thử nghiệm",
+    ["Test"] = "Thử nghiệm",
+    ["Post when bag is full"] = "Gửi thông báo khi đầy túi",
     ["Beta version"] = "Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."] = "Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
     ["Rejoin"] = "Vào lại",
@@ -303,7 +182,6 @@ local EXACT_MATCH_VI = {
     ["BEST STEAL"] = "CƯỚP TỐT NHẤT",
     ["EGG BAG"] = "TÚI TRỨNG",
     ["PET BAG"] = "TÚI PET",
-
     ["Search"] = "Tìm kiếm",
     ["Filter"] = "Lọc tìm",
     ["Steal"] = "Cướp Trứng",
@@ -598,7 +476,8 @@ local EXACT_MATCH_VI = {
     ["System"] = "Hệ Thống",
     ["Server"] = "Máy Chủ",
     ["SERVER"] = "MÁY CHỦ",
-
+    ["Webhook"] = "Webhook",
+    ["WEBHOOK"] = "WEBHOOK",
     ["Optimizer"] = "Tối Ưu Hóa",
     ["OPTIMIZER"] = "TỐI ƯU HÓA (GIẢM LAG)",
     ["Interface"] = "Giao Diện",
@@ -616,7 +495,6 @@ local EXACT_MATCH_VI = {
     ["Join"] = "Vào ngay",
     ["Rejoin on kick"] = "Tự vào lại khi bị văng/kick",
     ["Auto load script"] = "Tự chạy lại script khi chuyển server",
-
     ["GRAPHICS"] = "ĐỒ HỌA",
     ["Low graphics"] = "Đồ họa thấp (Tăng FPS)",
     ["Disable 3D Render"] = "Tắt kết xuất 3D (Treo máy)",
@@ -630,6 +508,109 @@ local EXACT_MATCH_VI = {
     ["BASES"] = "CĂN CỨ (BASES)",
     ["Hide other players' pets and eggs"] = "Ẩn pet và trứng của người chơi khác",
     ["Hide my pets and eggs"] = "Ẩn pet và trứng của bản thân",
+    -- GIAO DIỆN
+    ["UI scale"] = "Tỉ lệ giao diện",
+    ["Show/hide UI"] = "Hiện/Ẩn menu",
+    ["Opacity"] = "Độ trong suốt",
+    ["Tone"] = "Tông màu",
+    ["Dim the game"] = "Làm tối màn hình",
+    ["INTERFACE"] = "GIAO DIỆN",
+    ["QUICK BARS"] = "THANH NHANH",
+    ["Show quick bars"] = "Hiện thanh nhanh",
+    ["Keybinds"] = "Phím tắt",
+    ["Bar size"] = "Kích thước thanh",
+    ["PINS AND KEYBINDS"] = "GHIM & PHÍM TẮT",
+    ["Find an option"] = "Tìm tùy chọn",
+    ["All"] = "Tất cả",
+    ["Pinned"] = "Đã ghim",
+    ["STEAL / AUTO STEAL"] = "CƯỚP / TỰ ĐỘNG CƯỚP",
+    ["Delivery speed"] = "Tốc độ mang về",
+    ["Instant steps"] = "Bước tức thì",
+    ["slider"] = "thanh trượt",
+    ["+ PIN"] = "+ GHIM",
+    -- THEME
+    ["THEME"] = "GIAO DIỆN MÀU SẮC",
+    ["Twilight"] = "Hoàng Hôn",
+    ["Aurora"] = "Bắc Cực Quang",
+    ["Ocean"] = "Đại Dương",
+    ["Midnight"] = "Nửa Đêm",
+    ["Sakura"] = "Hoa Anh Đào",
+    ["Onyx"] = "Onyx",
+    ["Mono"] = "Đơn Sắc",
+    ["GAME HUD"] = "HUD GAME",
+    ["Steal panel button on game HUD"] = "Nút bảng cướp trên HUD game",
+    -- DEFAULTS
+    ["DEFAULTS"] = "MẶC ĐỊNH",
+    ["Reset to defaults"] = "Đặt lại mặc định",
+    ["Turn off all toggles"] = "Tắt tất cả nút bật/tắt",
+    ["Turn off"] = "Tắt tất cả",
+    ["Reset"] = "Đặt lại",
+    ["Clear all quick bars"] = "Xóa tất cả thanh nhanh",
+    ["Clear all keybinds"] = "Xóa tất cả phím tắt",
+    -- CONFIG
+    ["CONFIG"] = "CẤU HÌNH",
+    ["ACTIVE"] = "ĐANG DÙNG",
+    ["SAVED CONFIGS"] = "CẤU HÌNH ĐÃ LƯU",
+    ["Set as active config"] = "Đặt làm cấu hình hiện tại",
+    ["Set active"] = "Đặt làm mặc định",
+    ["Save changes"] = "Lưu thay đổi",
+    ["Save"] = "Lưu",
+    ["Auto load"] = "Tự tải",
+    ["Auto save"] = "Tự lưu",
+    ["PROFILES"] = "HỒ SƠ",
+    ["New config name"] = "Tên cấu hình mới",
+    ["Auto if empty"] = "Tự đặt tên nếu trống",
+    ["Create config"] = "Tạo cấu hình",
+    ["Create"] = "Tạo",
+    ["Pick to delete"] = "Chọn để xóa",
+    ["Delete picked"] = "Xóa đã chọn",
+    ["Delete"] = "Xóa",
+    ["Restore deleted"] = "Khôi phục đã xóa",
+    ["Export config"] = "Xuất cấu hình",
+    ["Import text"] = "Nhập văn bản",
+    ["Paste config text"] = "Dán văn bản cấu hình",
+    ["Import config"] = "Nhập cấu hình",
+    ["Import"] = "Nhập",
+    -- HALLOWEEN
+    ["HALLOWEEN"] = "HALLOWEEN",
+    ["HALLOWEEN DIMENSION"] = "CHIỀU KHÔNG GIAN HALLOWEEN",
+    ["Auto steal Halloween eggs"] = "Tự động cướp trứng Halloween",
+    ["Instant steal Halloween eggs"] = "Cướp tức thì trứng Halloween",
+    ["Steal speed"] = "Tốc độ cướp",
+    ["Halloween eggs"] = "Trứng Halloween",
+    ["Halloween rarities"] = "Độ hiếm Halloween",
+    ["Auto Pumpkin Moon"] = "Tự động Pumpkin Moon",
+    ["Auto buy Halloween Dimension Egg"] = "Tự mua trứng Halloween Dimension",
+    ["MONSTERS"] = "QUÁI VẬT",
+    ["Auto farm monsters"] = "Tự động cày quái vật",
+    ["Monsters"] = "Quái vật",
+    ["Monster order"] = "Thứ tự quái",
+    ["PHANTOM EXPRESS"] = "TÀU MA PHANTOM",
+    ["TRAIN"] = "TÀU HỎA",
+    ["Not here"] = "Không có mặt",
+    ["SOULS"] = "LINH HỒN",
+    ["Auto Phantom Express"] = "Tự động Phantom Express",
+    ["Auto vacuum Ghouler boss"] = "Tự hút boss Ghouler",
+    ["Ghost target"] = "Mục tiêu ma",
+    ["Rarest first"] = "Hiếm nhất trước",
+    ["Walk speed"] = "Tốc độ đi bộ",
+    ["Auto trade souls"] = "Tự đổi linh hồn",
+    ["GHOST DOG AND FISHING"] = "CHÓ MA VÀ CÂU CÁ",
+    ["QUEST"] = "NHIỆM VỤ",
+    ["FISH CAUGHT"] = "CÁ BẮT ĐƯỢC",
+    ["Done"] = "Hoàn thành",
+    ["Auto Ghost Dog quest"] = "Tự làm nhiệm vụ Chó Ma",
+    ["Auto fishing"] = "Tự động câu cá",
+    ["Cast luck"] = "Độ may khi câu",
+    ["x1.5 Perfect"] = "x1.5 Hoàn hảo",
+    -- CURSED ISLAND WARS
+    ["CURSED ISLAND WARS"] = "ĐẢO NGUYỀN RỦA",
+    ["Auto play Cursed Island Wars"] = "Tự chơi Cursed Island Wars",
+    ["Island Wars target"] = "Mục tiêu Island Wars",
+    ["Enemies and base"] = "Kẻ thù và căn cứ",
+    ["Enemies"] = "Kẻ thù",
+    ["Base only"] = "Chỉ căn cứ",
+    -- ĐỘ HIẾM
     ["Common"] = "Phổ Thông (Common)",
     ["Uncommon"] = "Thường (Uncommon)",
     ["Rare"] = "Hiếm (Rare)",
@@ -784,20 +765,14 @@ local function translateStatusAction(cleanEn)
         if cleanEn == "Đang rảnh" then return "Idle" end
         return cleanEn
     end
-
     local trimmed = (cleanEn:match("^%s*(.-)%s*$") or cleanEn):gsub("%s+", " ")
-    if trimmed:lower() == "idle" or trimmed == "Đang rảnh" then
-        return "Đang rảnh"
-    end
-
+    if trimmed:lower() == "idle" or trimmed == "Đang rảnh" then return "Đang rảnh" end
     local cacheKey = "STATUS_VI|" .. trimmed
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-
     if EXACT_MATCH_VI[trimmed] then
         FastCache[cacheKey] = EXACT_MATCH_VI[trimmed]
         return EXACT_MATCH_VI[trimmed]
     end
-
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if trimmed:find(item.pat) then
             local out = trimmed:gsub(item.pat, item.rep)
@@ -805,7 +780,6 @@ local function translateStatusAction(cleanEn)
             return out
         end
     end
-
     local result = trimmed
     for engPrefix, viPrefix in pairs(FALLBACK_VERB_PREFIX_VI) do
         if result:sub(1, #engPrefix):lower() == engPrefix:lower() then
@@ -813,10 +787,7 @@ local function translateStatusAction(cleanEn)
             break
         end
     end
-    result = result:gsub(" home$", " về nhà")
-                   :gsub(" to safe zone$", " về vùng an toàn")
-                   :gsub(" to base$", " về căn cứ")
-
+    result = result:gsub(" home$", " về nhà"):gsub(" to safe zone$", " về vùng an toàn"):gsub(" to base$", " về căn cứ")
     FastCache[cacheKey] = result
     return result
 end
@@ -825,32 +796,27 @@ local function translateVenyxText(raw)
     if not raw or raw == "" then return raw end
     local cacheKey = currentLanguage .. "|" .. raw
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-
     if raw:find("Venyx SAE") then
         raw = raw:gsub("Venyx SAE", "TLN SAE")
     elseif raw == "VENYX" then
         raw = NEW_TITLE
     end
-
     if currentLanguage == "EN" then
         FastCache[cacheKey] = raw
         return raw
     end
-
     local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
     if EXACT_MATCH_VI[normalized] then
         local out = EXACT_MATCH_VI[normalized]
         FastCache[cacheKey] = out
         return out
     end
-
     local prefix, wordPart = normalized:match("^([^%w%s]+%s*)(.+)$")
     if prefix and wordPart and EXACT_MATCH_VI[wordPart] then
         local out = prefix .. EXACT_MATCH_VI[wordPart]
         FastCache[cacheKey] = out
         return out
     end
-
     local result = normalized
     for _, item in ipairs(DYNAMIC_PATTERNS_VI) do
         if result:find(item.pat) then
@@ -859,7 +825,6 @@ local function translateVenyxText(raw)
             return result
         end
     end
-
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if result:find(item.pat) then
             result = result:gsub(item.pat, item.rep)
@@ -867,7 +832,6 @@ local function translateVenyxText(raw)
             return result
         end
     end
-
     FastCache[cacheKey] = raw
     return raw
 end
@@ -876,63 +840,42 @@ local function applyElementTranslation(inst)
     if not (inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox")) then return end
     if inst:GetAttribute("__IslandDone") or inst:GetAttribute("__FpsHooked") or inst:GetAttribute("__HiddenVxLogo") or inst.Name == "IslandExpandHint" or inst:FindFirstAncestor("ChilliV5_ExpandedIsland") then return end
     if inst:GetAttribute("__IsTranslating") then return end
-
     if inst:IsA("TextBox") then
         local origPh = inst:GetAttribute("OrigPlaceholder")
         if not origPh and inst.PlaceholderText ~= "" then
             origPh = inst.PlaceholderText
             inst:SetAttribute("OrigPlaceholder", origPh)
         end
-        if origPh then
-            inst.PlaceholderText = translateVenyxText(origPh)
-        end
+        if origPh then inst.PlaceholderText = translateVenyxText(origPh) end
         return
     end
-
     local rawText = inst.Text
-    if isFpsCounterText(rawText) then
-        hookFakeFpsCounter(inst)
-        return
-    end
-
+    if isFpsCounterText(rawText) then hookFakeFpsCounter(inst) return end
     local original = inst:GetAttribute("OrigRawText")
     if not original then
         original = rawText
         inst:SetAttribute("OrigRawText", original)
     end
-
     local mapped = translateVenyxText(original)
     if inst.Text ~= mapped then
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
         pcall(function() inst.Text = mapped end)
-        task.defer(function()
-            inst:SetAttribute("__IsTranslating", false)
-        end)
+        task.defer(function() inst:SetAttribute("__IsTranslating", false) end)
     end
 end
 
 local function hookTextForTranslation(inst)
     if not (inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox")) then return end
     if inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") or inst.Name == "IslandExpandHint" or inst:FindFirstAncestor("ChilliV5_ExpandedIsland") then return end
-
-    if not inst:IsA("TextBox") and isFpsCounterText(inst.Text) then
-        hookFakeFpsCounter(inst)
-        return
-    end
-
+    if not inst:IsA("TextBox") and isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst) return end
     applyElementTranslation(inst)
-
     if inst:GetAttribute("__TransHooked") then return end
     inst:SetAttribute("__TransHooked", true)
     table.insert(TrackedTexts, inst)
-
     inst:GetPropertyChangedSignal("Text"):Connect(function()
         if inst:GetAttribute("__IsTranslating") or inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") then return end
-        if isFpsCounterText(inst.Text) then
-            hookFakeFpsCounter(inst)
-            return
-        end
+        if isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst) return end
         if inst.Text ~= inst:GetAttribute("__LastTranslated") then
             inst:SetAttribute("OrigRawText", inst.Text)
             applyElementTranslation(inst)
@@ -943,48 +886,34 @@ end
 local function refreshAllTranslations()
     for i = #TrackedTexts, 1, -1 do
         local el = TrackedTexts[i]
-        if el and el.Parent then
-            applyElementTranslation(el)
-        else
-            table.remove(TrackedTexts, i)
-        end
+        if el and el.Parent then applyElementTranslation(el)
+        else table.remove(TrackedTexts, i) end
     end
-    if GlobalRefreshIslandStatus then
-        GlobalRefreshIslandStatus()
-    end
+    if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
 
--- ==================== 4. DYNAMIC ISLAND NỀN ĐEN ====================
+-- ==================== 4. DYNAMIC ISLAND ====================
 local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     local pill = statusLbl.Parent
     if not (pill and pill:IsA("GuiObject")) then return end
-
     local badHitbox = pill:FindFirstChild("IslandClickHitbox")
     if badHitbox then badHitbox:Destroy() end
-
     for _, child in ipairs(pill:GetChildren()) do
         if child:IsA("UIGradient") then child:Destroy() end
     end
-
     pill.BackgroundColor3 = ISLAND_BLACK_BG
     pill.BackgroundTransparency = 0
     pill.Size = UDim2.new(0, 0, 0, 28)
     pill.AutomaticSize = Enum.AutomaticSize.X
-
     if not pill:GetAttribute("__BlackBgLocked") then
         pill:SetAttribute("__BlackBgLocked", true)
         pill:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-            if pill.BackgroundColor3 ~= ISLAND_BLACK_BG then
-                pill.BackgroundColor3 = ISLAND_BLACK_BG
-            end
+            if pill.BackgroundColor3 ~= ISLAND_BLACK_BG then pill.BackgroundColor3 = ISLAND_BLACK_BG end
         end)
         pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-            if pill.BackgroundTransparency ~= 0 then
-                pill.BackgroundTransparency = 0
-            end
+            if pill.BackgroundTransparency ~= 0 then pill.BackgroundTransparency = 0 end
         end)
     end
-
     local expandHint = pill:FindFirstChild("IslandExpandHint")
     if not expandHint then
         expandHint = Instance.new("TextLabel")
@@ -999,21 +928,17 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
         expandHint.LayoutOrder = 99
         expandHint.ZIndex = 10000
         expandHint.Parent = pill
-
         local hintCorner = Instance.new("UICorner")
         hintCorner.CornerRadius = UDim.new(1, 0)
         hintCorner.Parent = expandHint
-
         local hintStroke = Instance.new("UIStroke")
         hintStroke.Thickness = 1
         hintStroke.Color = Color3.fromRGB(90, 130, 200)
         hintStroke.Parent = expandHint
     end
-
     local function updateStatusText(forceFromSavedOrig)
         if statusLbl:GetAttribute("__Updating") then return end
         statusLbl:SetAttribute("__Updating", true)
-
         local cleanEn
         if forceFromSavedOrig and statusLbl:GetAttribute("OrigStatusEn") then
             cleanEn = statusLbl:GetAttribute("OrigStatusEn")
@@ -1023,47 +948,32 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
             if cleanEn == "" or cleanEn == "Đang rảnh" then cleanEn = "Idle" end
             if statusLbl.Text ~= statusLbl:GetAttribute("__LastTranslatedStatus") then
                 local currentRaw = statusLbl.Text:gsub("●", ""):gsub("•", ""):gsub("✨%s*rainbow", ""):match("^%s*(.-)%s*$") or ""
-                if currentRaw ~= "" and currentRaw ~= "Đang rảnh" then
-                    cleanEn = currentRaw
-                end
+                if currentRaw ~= "" and currentRaw ~= "Đang rảnh" then cleanEn = currentRaw end
                 statusLbl:SetAttribute("OrigStatusEn", cleanEn)
             else
                 cleanEn = statusLbl:GetAttribute("OrigStatusEn") or cleanEn
             end
         end
-
         local translatedStatus = translateStatusAction(cleanEn)
         statusLbl:SetAttribute("__LastTranslatedStatus", translatedStatus)
-
         statusLbl.Text = translatedStatus
         statusLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
         statusLbl.TextTransparency = 0
         statusLbl.Size = UDim2.new(0, 0, 1, 0)
         statusLbl.AutomaticSize = Enum.AutomaticSize.X
-
-        task.defer(function()
-            statusLbl:SetAttribute("__Updating", false)
-        end)
+        task.defer(function() statusLbl:SetAttribute("__Updating", false) end)
     end
-
-    GlobalRefreshIslandStatus = function()
-        updateStatusText(true)
-    end
-
+    GlobalRefreshIslandStatus = function() updateStatusText(true) end
     if statusLbl:GetAttribute("__IslandDone") and venyxGui:FindFirstChild("ChilliV5_ExpandedIsland") then
-        updateStatusText(true)
-        return
+        updateStatusText(true) return
     end
     statusLbl:SetAttribute("__IslandDone", true)
-
     updateStatusText(false)
-
     local txtGrad = statusLbl:FindFirstChild("TextRainbow") or Instance.new("UIGradient")
     txtGrad.Name = "TextRainbow"
     txtGrad.Color = COLOR_SEQ_RAINBOW
     txtGrad.Parent = statusLbl
     table.insert(ActiveGradients, txtGrad)
-
     pill.Parent = venyxGui
     pill.AnchorPoint = Vector2.new(0.5, 0)
     pill.Position = UDim2.new(0.5, 0, 0, 10)
@@ -1071,26 +981,21 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     pill.Active = true
     statusLbl.Active = true
     expandHint.Active = true
-
     local pillCorner = pill:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
     pillCorner.CornerRadius = UDim.new(1, 0)
     pillCorner.Parent = pill
-
     local pillStroke = pill:FindFirstChild("IslandStroke") or Instance.new("UIStroke")
     pillStroke.Name = "IslandStroke"
     pillStroke.Thickness = 1.6
     pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     pillStroke.Color = Color3.fromRGB(255, 255, 255)
     pillStroke.Parent = pill
-
     local strokeGrad = pillStroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     strokeGrad.Color = COLOR_SEQ_RAINBOW
     strokeGrad.Parent = pillStroke
     table.insert(ActiveGradients, strokeGrad)
-
     local oldExp = venyxGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
-
     local ExpandedIsland = Instance.new("Frame")
     ExpandedIsland.Name = "ChilliV5_ExpandedIsland"
     ExpandedIsland.AnchorPoint = Vector2.new(0.5, 0)
@@ -1103,22 +1008,18 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     ExpandedIsland.Active = true
     ExpandedIsland.ZIndex = 10000
     ExpandedIsland.Parent = venyxGui
-
     local ExpCorner = Instance.new("UICorner")
     ExpCorner.CornerRadius = UDim.new(0, 16)
     ExpCorner.Parent = ExpandedIsland
-
     local ExpStroke = Instance.new("UIStroke")
     ExpStroke.Thickness = 1.6
     ExpStroke.Color = Color3.fromRGB(255, 255, 255)
     ExpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     ExpStroke.Parent = ExpandedIsland
-
     local ExpStrokeGrad = Instance.new("UIGradient")
     ExpStrokeGrad.Color = COLOR_SEQ_RAINBOW
     ExpStrokeGrad.Parent = ExpStroke
     table.insert(ActiveGradients, ExpStrokeGrad)
-
     local ExpTitle = Instance.new("TextLabel")
     ExpTitle.Size = UDim2.new(1, -44, 0, 28)
     ExpTitle.Position = UDim2.new(0, 14, 0, 4)
@@ -1130,7 +1031,6 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     ExpTitle.TextXAlignment = Enum.TextXAlignment.Left
     ExpTitle.ZIndex = 10001
     ExpTitle.Parent = ExpandedIsland
-
     local CollapseBtn = Instance.new("TextButton")
     CollapseBtn.Size = UDim2.new(0, 24, 0, 22)
     CollapseBtn.Position = UDim2.new(1, -32, 0, 7)
@@ -1142,11 +1042,9 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     CollapseBtn.TextColor3 = Color3.fromRGB(160, 205, 255)
     CollapseBtn.ZIndex = 10002
     CollapseBtn.Parent = ExpandedIsland
-
     local CollapseCorner = Instance.new("UICorner")
     CollapseCorner.CornerRadius = UDim.new(1, 0)
     CollapseCorner.Parent = CollapseBtn
-
     local LangCapsule = Instance.new("Frame")
     LangCapsule.Size = UDim2.new(1, -20, 0, 34)
     LangCapsule.Position = UDim2.new(0, 10, 0, 36)
@@ -1154,11 +1052,9 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     LangCapsule.BorderSizePixel = 0
     LangCapsule.ZIndex = 10001
     LangCapsule.Parent = ExpandedIsland
-
     local LangCorner = Instance.new("UICorner")
     LangCorner.CornerRadius = UDim.new(1, 0)
     LangCorner.Parent = LangCapsule
-
     local LangSlider = Instance.new("Frame")
     LangSlider.Size = UDim2.new(0.5, -4, 1, -4)
     LangSlider.Position = UDim2.new(0, 2, 0, 2)
@@ -1166,11 +1062,9 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     LangSlider.BorderSizePixel = 0
     LangSlider.ZIndex = 10002
     LangSlider.Parent = LangCapsule
-
     local SliderCorner = Instance.new("UICorner")
     SliderCorner.CornerRadius = UDim.new(1, 0)
     SliderCorner.Parent = LangSlider
-
     local BtnVI = Instance.new("TextButton")
     BtnVI.Size = UDim2.new(0.5, 0, 1, 0)
     BtnVI.Position = UDim2.new(0, 0, 0, 0)
@@ -1181,7 +1075,6 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     BtnVI.TextColor3 = Color3.fromRGB(255, 255, 255)
     BtnVI.ZIndex = 10003
     BtnVI.Parent = LangCapsule
-
     local BtnEN = Instance.new("TextButton")
     BtnEN.Size = UDim2.new(0.5, 0, 1, 0)
     BtnEN.Position = UDim2.new(0.5, 0, 0, 0)
@@ -1192,57 +1085,40 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     BtnEN.TextColor3 = Color3.fromRGB(150, 165, 190)
     BtnEN.ZIndex = 10003
     BtnEN.Parent = LangCapsule
-
     local function setLanguage(lang)
         if currentLanguage == lang then return end
         currentLanguage = lang
-
         if lang == "VI" then
-            TweenService:Create(LangSlider, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Position = UDim2.new(0, 2, 0, 2)
-            }):Play()
+            TweenService:Create(LangSlider, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.new(0, 2, 0, 2) }):Play()
             BtnVI.TextColor3 = Color3.fromRGB(255, 255, 255)
             BtnEN.TextColor3 = Color3.fromRGB(150, 165, 190)
         else
-            TweenService:Create(LangSlider, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Position = UDim2.new(0.5, 2, 0, 2)
-            }):Play()
+            TweenService:Create(LangSlider, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 2, 0, 2) }):Play()
             BtnEN.TextColor3 = Color3.fromRGB(255, 255, 255)
             BtnVI.TextColor3 = Color3.fromRGB(150, 165, 190)
         end
-
         refreshAllTranslations()
     end
-
     BtnVI.MouseButton1Click:Connect(function() setLanguage("VI") end)
     BtnEN.MouseButton1Click:Connect(function() setLanguage("EN") end)
-
     local function toggleIsland(expand)
         if expand then
             ExpandedIsland.Position = pill.Position
             pill.Visible = false
             ExpandedIsland.Size = UDim2.new(0, 150, 0, 28)
             ExpandedIsland.Visible = true
-            TweenService:Create(ExpandedIsland, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 260, 0, 78)
-            }):Play()
+            TweenService:Create(ExpandedIsland, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(0, 260, 0, 78) }):Play()
         else
             pill.Position = ExpandedIsland.Position
             ExpandedIsland.Visible = false
             pill.Visible = true
         end
     end
-
-    CollapseBtn.MouseButton1Click:Connect(function()
-        toggleIsland(false)
-    end)
-
+    CollapseBtn.MouseButton1Click:Connect(function() toggleIsland(false) end)
     local function attachDragAndClick(triggerObj, moveFrame, onTapCallback)
         if triggerObj:GetAttribute("__DragBound") then return end
         triggerObj:SetAttribute("__DragBound", true)
-
         local dragging, dragStart, startPos, moved = false, nil, nil, false
-
         triggerObj.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = true
@@ -1251,21 +1127,16 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
                 startPos = moveFrame.Position
                 input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
-                        if dragging and not moved and onTapCallback then
-                            onTapCallback()
-                        end
+                        if dragging and not moved and onTapCallback then onTapCallback() end
                         dragging = false
                     end
                 end)
             end
         end)
-
         triggerObj.InputChanged:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
                 local delta = input.Position - dragStart
-                if delta.Magnitude > 6 then
-                    moved = true
-                end
+                if delta.Magnitude > 6 then moved = true end
                 local cam = workspace.CurrentCamera
                 local maxX = cam and cam.ViewportSize.X - 140 or 800
                 local maxY = cam and cam.ViewportSize.Y - 50 or 600
@@ -1277,13 +1148,11 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
             end
         end)
     end
-
     local openCallback = function() toggleIsland(true) end
     attachDragAndClick(pill, pill, openCallback)
     attachDragAndClick(statusLbl, pill, openCallback)
     attachDragAndClick(expandHint, pill, openCallback)
     attachDragAndClick(ExpandedIsland, ExpandedIsland, nil)
-
     statusLbl:GetPropertyChangedSignal("Text"):Connect(function()
         if not statusLbl:GetAttribute("__Updating") and statusLbl.Text ~= statusLbl:GetAttribute("__LastTranslatedStatus") then
             updateStatusText(false)
@@ -1291,29 +1160,21 @@ local function setupDynamicIslandFromStatus(statusLbl, venyxGui)
     end)
 end
 
--- ==================== 5. NÚT TRÒN NỔI 1:1 & HEADER LOGO ====================
+-- ==================== 5. LOGO TRÒN ====================
 local function setupUnclippedCircularLogo(targetObj)
     local topPanel = targetObj
     while topPanel.Parent and topPanel.Parent:IsA("GuiObject") and not topPanel.Parent:IsA("ScreenGui") do
         topPanel = topPanel.Parent
     end
-
     if topPanel:GetAttribute("__FloatingLogoV5Perfect") then return end
-
     local sz = topPanel.AbsoluteSize
     local pos = topPanel.AbsolutePosition
-    if sz.X > 105 or sz.Y > 105 or sz.X < 28 or math.abs(sz.X - sz.Y) > 25 or pos.X > 350 then
-        return
-    end
-
+    if sz.X > 105 or sz.Y > 105 or sz.X < 28 or math.abs(sz.X - sz.Y) > 25 or pos.X > 350 then return end
     topPanel:SetAttribute("__FloatingLogoV5Perfect", true)
     local container = topPanel
-
     for _, child in ipairs(container:GetDescendants()) do
         if child:IsA("UIPadding") or child:IsA("UIAspectRatioConstraint") or child:IsA("UISizeConstraint") then
-            if child.Name ~= "PerfectCircleAspect" then
-                pcall(function() child:Destroy() end)
-            end
+            if child.Name ~= "PerfectCircleAspect" then pcall(function() child:Destroy() end) end
         end
         if (child:IsA("ImageLabel") or child:IsA("ImageButton")) and child.Name ~= "ChilliV5CoverLogo" then
             child.ImageTransparency = 1
@@ -1324,50 +1185,40 @@ local function setupUnclippedCircularLogo(targetObj)
             child.BackgroundTransparency = 1
         end
     end
-
     if container:IsA("ImageLabel") or container:IsA("ImageButton") then
         container.ImageTransparency = 1
     elseif container:IsA("TextLabel") or container:IsA("TextButton") then
         container:SetAttribute("__HiddenVxLogo", true)
         container.TextTransparency = 1
     end
-
     container.Size = UDim2.new(0, 60, 0, 60)
     container.BackgroundColor3 = LOGO_BG_COLOR
     container.BackgroundTransparency = 0
     container.BorderSizePixel = 0
     container.ClipsDescendants = true
-
     local aspect = container:FindFirstChild("PerfectCircleAspect") or Instance.new("UIAspectRatioConstraint")
     aspect.Name = "PerfectCircleAspect"
     aspect.AspectRatio = 1
     aspect.Parent = container
-
     local cCorner = container:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
     cCorner.CornerRadius = UDim.new(1, 0)
     cCorner.Parent = container
-
     if not container:GetAttribute("__SizeLocked") then
         container:SetAttribute("__SizeLocked", true)
         container:GetPropertyChangedSignal("Size"):Connect(function()
-            if container.Size ~= UDim2.new(0, 60, 0, 60) then
-                container.Size = UDim2.new(0, 60, 0, 60)
-            end
+            if container.Size ~= UDim2.new(0, 60, 0, 60) then container.Size = UDim2.new(0, 60, 0, 60) end
         end)
     end
-
     local stroke = container:FindFirstChild("RainbowBorder") or Instance.new("UIStroke")
     stroke.Name = "RainbowBorder"
     stroke.Thickness = 2.5
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Color = Color3.fromRGB(255, 255, 255)
     stroke.Parent = container
-
     local strokeGrad = stroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     strokeGrad.Color = COLOR_SEQ_RAINBOW
     strokeGrad.Parent = stroke
     table.insert(ActiveGradients, strokeGrad)
-
     local coverLogo = container:FindFirstChild("ChilliV5CoverLogo") or Instance.new("ImageLabel")
     coverLogo.Name = "ChilliV5CoverLogo"
     coverLogo.Size = UDim2.new(1, 0, 1, 0)
@@ -1380,7 +1231,6 @@ local function setupUnclippedCircularLogo(targetObj)
     coverLogo.Active = false
     coverLogo.ZIndex = container.ZIndex + 5
     coverLogo.Parent = container
-
     local logoCorner = coverLogo:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
     logoCorner.CornerRadius = UDim.new(1, 0)
     logoCorner.Parent = coverLogo
@@ -1390,7 +1240,6 @@ local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
     if not headerContainer or not titleLbl then return end
     local headerY = titleLbl.AbsolutePosition.Y
     local titleX = titleLbl.AbsolutePosition.X
-
     for _, item in ipairs(headerContainer:GetDescendants()) do
         if item ~= titleLbl and item:IsA("GuiObject") and item.Name ~= "ChilliHeaderLogo" then
             local pos = item.AbsolutePosition
@@ -1423,7 +1272,7 @@ local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
     end
 end
 
--- ==================== 6. BỘ QUÉT ĐỊNH VỊ & DỊCH THUẬT AN TOÀN ====================
+-- ==================== 6. MAIN SCAN ====================
 local function tryPatchVenyx()
     for _, root in ipairs(roots) do
         if root then
@@ -1434,24 +1283,18 @@ local function tryPatchVenyx()
                             hookFakeFpsCounter(d)
                         end
                     end
-
                     local titleLbl = nil
                     for _, d in ipairs(gui:GetDescendants()) do
                         if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d:FindFirstAncestorOfClass("ScrollingFrame") then
                             local t = d.Text
-                            if t == "VENYX" or t == NEW_TITLE then
-                                titleLbl = d
-                                break
-                            end
+                            if t == "VENYX" or t == NEW_TITLE then titleLbl = d break end
                         end
                     end
-
                     if titleLbl then
                         if titleLbl.Text ~= NEW_TITLE then
                             titleLbl.Text = NEW_TITLE
                             titleLbl.AutomaticSize = Enum.AutomaticSize.X
                         end
-
                         local mainWindow = nil
                         local curr = titleLbl
                         while curr.Parent and curr.Parent ~= gui do
@@ -1460,43 +1303,27 @@ local function tryPatchVenyx()
                                 mainWindow = curr
                             end
                         end
-
                         local headerY = titleLbl.AbsolutePosition.Y
-
-                        if mainWindow then
-                            patchHeaderLogoLeftOfTitle(mainWindow, titleLbl)
-                        end
-
+                        if mainWindow then patchHeaderLogoLeftOfTitle(mainWindow, titleLbl) end
                         if not gui:GetAttribute("__TextListenerAttached") then
                             gui:SetAttribute("__TextListenerAttached", true)
                             gui.DescendantAdded:Connect(function(newDesc)
                                 if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
-                                    task.defer(function()
-                                        hookTextForTranslation(newDesc)
-                                    end)
+                                    task.defer(function() hookTextForTranslation(newDesc) end)
                                 end
                             end)
                         end
-
                         for _, topChild in ipairs(gui:GetChildren()) do
-                            if topChild:IsA("GuiObject")
-                            and topChild ~= mainWindow
-                            and topChild.Name ~= "ChilliV5_ExpandedIsland"
-                            and not topChild:FindFirstChild("IslandExpandHint") then
+                            if topChild:IsA("GuiObject") and topChild ~= mainWindow and topChild.Name ~= "ChilliV5_ExpandedIsland" and not topChild:FindFirstChild("IslandExpandHint") then
                                 setupUnclippedCircularLogo(topChild)
                             end
                         end
-
                         for _, desc in ipairs(gui:GetDescendants()) do
                             if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
                                 local txt = desc.Text or ""
                                 local origTxt = desc:GetAttribute("OrigRawText") or ""
                                 local isAlreadyMovedIdle = desc:GetAttribute("__IslandDone")
-
-                                local isStatusKeyword = txt:lower():find("idle")
-                                    or origTxt:lower():find("idle")
-                                    or txt == "Đang rảnh"
-
+                                local isStatusKeyword = txt:lower():find("idle") or origTxt:lower():find("idle") or txt == "Đang rảnh"
                                 local isHeaderIdle = (not gui:GetAttribute("__IslandLocked"))
                                     and (not desc:FindFirstAncestorOfClass("ScrollingFrame"))
                                     and desc.Parent
@@ -1504,18 +1331,13 @@ local function tryPatchVenyx()
                                     and math.abs(desc.AbsolutePosition.Y - headerY) < 35
                                     and desc.AbsolutePosition.X > titleLbl.AbsolutePosition.X + 60
                                     and isStatusKeyword
-
                                 if isHeaderIdle or isAlreadyMovedIdle then
                                     gui:SetAttribute("__IslandLocked", true)
                                     setupDynamicIslandFromStatus(desc, gui)
                                 else
                                     hookTextForTranslation(desc)
                                 end
-
-                            elseif (desc:IsA("ImageLabel") or desc:IsA("ImageButton"))
-                            and desc.Name ~= "ChilliV5CoverLogo"
-                            and desc.Name ~= "ChilliHeaderLogo"
-                            and desc.Name ~= "InnerChilliLogo" then
+                            elseif (desc:IsA("ImageLabel") or desc:IsA("ImageButton")) and desc.Name ~= "ChilliV5CoverLogo" and desc.Name ~= "ChilliHeaderLogo" and desc.Name ~= "InnerChilliLogo" then
                                 if not desc:FindFirstAncestorOfClass("ScrollingFrame") then
                                     if mainWindow and not desc:IsDescendantOf(mainWindow) then
                                         setupUnclippedCircularLogo(desc)
@@ -1538,9 +1360,9 @@ task.spawn(function()
     end
 end)
 
--- ==================== FULL UI PATCH: TELEGRAM + WHAT'S NEW + CHILLI HUB ====================
+-- ==================== 7. FULL UI PATCH: TELEGRAM + WHAT'S NEW + CHILLI HUB ====================
 task.spawn(function()
-    -- 1. HOOK setclipboard toàn cục: chặn discord.gg → thay bằng Telegram
+    -- Hook setclipboard: chặn discord.gg → Telegram
     if setclipboard then
         local origClipboard = setclipboard
         setclipboard = function(text)
@@ -1556,76 +1378,50 @@ task.spawn(function()
 
     local function patchGui(gui)
         if not gui:IsA("ScreenGui") then return end
-
         local function scanDesc(desc)
-            -- 2. Ẩn WHAT'S NEW frame
+            -- Ẩn WHAT'S NEW
             if desc:IsA("Frame") or desc:IsA("ScrollingFrame") then
                 local name = desc.Name:lower()
                 if name:find("whatsnew") or name:find("whats_new") or name:find("changelog") or name:find("news") then
-                    desc.Visible = false
-                    return
+                    desc.Visible = false return
                 end
-                -- check by title label inside
                 for _, child in ipairs(desc:GetChildren()) do
                     if (child:IsA("TextLabel") or child:IsA("TextButton")) then
                         local t = child.Text or ""
                         if t == "WHAT'S NEW" or t == "CÓ GÌ MỚI" then
-                            desc.Visible = false
-                            break
+                            desc.Visible = false break
                         end
                     end
                 end
             end
-
-            -- 3. Đổi "Chilli Hub" → "TLN CHEAT" trên nút
+            -- "Chilli Hub" → "TLN CHEAT"
             if (desc:IsA("TextButton") or desc:IsA("TextLabel")) and not patched[desc] then
                 local t = desc.Text or ""
                 if t == "Chilli Hub" or t == "Chilli hub" or t == "CHILLI HUB" then
                     patched[desc] = true
                     desc.Text = "TLN CHEAT"
                     desc:GetPropertyChangedSignal("Text"):Connect(function()
-                        if desc.Text ~= "TLN CHEAT" then
-                            desc.Text = "TLN CHEAT"
-                        end
+                        if desc.Text ~= "TLN CHEAT" then desc.Text = "TLN CHEAT" end
                     end)
                 end
             end
-
-            -- 4. Hook nút Copy Invite / Telegram
+            -- Hook Copy Invite → Telegram
             if desc:IsA("TextButton") and not patched[desc] then
                 local t = (desc.Text or ""):lower()
-                if t:find("copy invite") or t:find("chép link") or t:find("copy") and t:find("invite") then
+                if t:find("copy invite") or t:find("chép link") then
                     patched[desc] = true
                     desc.MouseButton1Click:Connect(function()
-                        pcall(function()
-                            if setclipboard then setclipboard(TELEGRAM_LINK) end
-                        end)
+                        pcall(function() if setclipboard then setclipboard(TELEGRAM_LINK) end end)
                     end)
                 end
             end
-
-            -- 5. Đổi icon Discord card (ImageLabel màu tím) → ẩn
-            if desc:IsA("ImageLabel") or desc:IsA("ImageButton") then
-                -- nếu có màu nền tím (discord color) thì đổi
-                local bg = desc.BackgroundColor3
-                if bg and bg.R > 0.3 and bg.G < 0.4 and bg.B > 0.7 then
-                    desc.BackgroundColor3 = Color3.fromRGB(30, 167, 132) -- teal Telegram
-                end
-            end
         end
-
-        for _, desc in ipairs(gui:GetDescendants()) do
-            pcall(scanDesc, desc)
-        end
-
+        for _, desc in ipairs(gui:GetDescendants()) do pcall(scanDesc, desc) end
         gui.DescendantAdded:Connect(function(newDesc)
-            task.defer(function()
-                pcall(scanDesc, newDesc)
-            end)
+            task.defer(function() pcall(scanDesc, newDesc) end)
         end)
     end
 
-    -- chạy liên tục 30 giây đầu để bắt kịp VenyxHub load xong
     for i = 1, 60 do
         task.wait(0.5)
         for _, root in ipairs(roots) do
