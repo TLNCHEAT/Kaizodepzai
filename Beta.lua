@@ -1,5 +1,5 @@
 -- ==============================================================================
---  TLN CHEAT - MERGED EDITION (VI + EN + ID | 3-LANG PILL | FULL FEATURES)
+--  TLN CHEAT PRIME 
 -- ==============================================================================
 
 local NEW_TITLE       = "TLN CHEAT"
@@ -1238,11 +1238,11 @@ local function tryPatchTLN()
     end
 end
 
--- Chạy patch sau khi hub ready
-onHubReady(function()
-    pcall(tryPatchTLN)
+-- tryPatchTLN chạy NGAY - không cần chờ hub API
+pcall(tryPatchTLN)
 
-    -- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào
+-- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào
+task.spawn(function()
     for _, root in ipairs(roots) do
         if root then
             root.ChildAdded:Connect(function()
@@ -1251,16 +1251,16 @@ onHubReady(function()
             end)
         end
     end
+end)
 
-    -- Rapid scan 30s rồi keepalive mãi
-    task.spawn(function()
-        for _ = 1, 60 do
-            task.wait(0.5); pcall(tryPatchTLN)
-        end
-        while true do
-            task.wait(4); pcall(tryPatchTLN)
-        end
-    end)
+-- Rapid scan 30s rồi keepalive mãi
+task.spawn(function()
+    for _ = 1, 60 do
+        task.wait(0.5); pcall(tryPatchTLN)
+    end
+    while true do
+        task.wait(4); pcall(tryPatchTLN)
+    end
 end)
 
 -- ==================== THÊM CHỨC NĂNG TẠI ĐÂY ====================
