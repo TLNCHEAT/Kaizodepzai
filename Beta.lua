@@ -1,5 +1,5 @@
 -- ==============================================================================
---  TLN CHEAT PRIME 
+--  TLN CHEAT - MERGED EDITION (VI + EN + ID | 3-LANG PILL | FULL FEATURES)
 -- ==============================================================================
 
 local NEW_TITLE       = "TLN CHEAT"
@@ -963,39 +963,43 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
 
-    pill.BackgroundColor3 = ISLAND_BLACK_BG
-    pill.BackgroundTransparency = 0
-    pill.Size = UDim2.new(0, 300, 0, 30)
-    pill.AutomaticSize = Enum.AutomaticSize.None
-    pill.Parent = tlnGui
-    pill.AnchorPoint = Vector2.new(0.5, 0)
-    pill.Position = UDim2.new(0.5, 0, 0, 8)
-    pill.ZIndex = 9999
-    pill.Active = true
-    pill.ClipsDescendants = false
-    if not pill:GetAttribute("__BlackBgLocked") then
-        pill:SetAttribute("__BlackBgLocked", true)
-        pill:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-            if pill.BackgroundColor3 ~= ISLAND_BLACK_BG then pill.BackgroundColor3 = ISLAND_BLACK_BG end
-        end)
-        pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-            if pill.BackgroundTransparency ~= 0 then pill.BackgroundTransparency = 0 end
-        end)
-        pill:GetPropertyChangedSignal("Size"):Connect(function()
-            if pill.Size ~= UDim2.new(0, 300, 0, 30) then pill.Size = UDim2.new(0, 300, 0, 30) end
-        end)
-    end
+    -- Ẩn pill gốc hoàn toàn - không chiến với VenyxHub nữa
+    pill.BackgroundTransparency = 1
+    pill.Size = UDim2.new(0, 0, 0, 0)
+    pill.Active = false
+    pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+        if pill.BackgroundTransparency ~= 1 then pill.BackgroundTransparency = 1 end
+    end)
 
-    local pillCorner = pill:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
-    pillCorner.CornerRadius = UDim.new(1, 0); pillCorner.Parent = pill
+    -- Tạo frame riêng hoàn toàn độc lập, không bị VenyxHub can thiệp
+    local langBar = tlnGui:FindFirstChild("TLNLangBar")
+    if langBar then langBar:Destroy() end
+    langBar = Instance.new("Frame")
+    langBar.Name       = "TLNLangBar"
+    langBar.Size       = UDim2.new(0, 330, 0, 30)
+    langBar.Position   = UDim2.new(0.5, 0, 0, 8)
+    langBar.AnchorPoint = Vector2.new(0.5, 0)
+    langBar.BackgroundColor3 = ISLAND_BLACK_BG
+    langBar.BackgroundTransparency = 0
+    langBar.BorderSizePixel = 0
+    langBar.ZIndex     = 9999
+    langBar.ClipsDescendants = false
+    langBar.Active     = true
+    langBar.Parent     = tlnGui
 
-    local pillStroke = pill:FindFirstChild("IslandStroke") or Instance.new("UIStroke")
-    pillStroke.Name = "IslandStroke"; pillStroke.Thickness = 1.6
-    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    pillStroke.Color = Color3.fromRGB(255, 255, 255); pillStroke.Parent = pill
-    local strokeGrad = pillStroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = pillStroke
+    local lbCorner = Instance.new("UICorner")
+    lbCorner.CornerRadius = UDim.new(1, 0); lbCorner.Parent = langBar
+
+    local lbStroke = Instance.new("UIStroke")
+    lbStroke.Name = "IslandStroke"; lbStroke.Thickness = 1.6
+    lbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    lbStroke.Color = Color3.fromRGB(255, 255, 255); lbStroke.Parent = langBar
+    local strokeGrad = Instance.new("UIGradient")
+    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = lbStroke
     table.insert(ActiveGradients, strokeGrad)
+
+    -- alias để code bên dưới dùng chung
+    local pill = langBar
 
     local LangSlider = Instance.new("Frame")
     LangSlider.Name = "LangSlider"
@@ -1065,7 +1069,7 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
                 local screenW = cam and cam.ViewportSize.X or 800
                 local screenH = cam and cam.ViewportSize.Y or 600
                 -- pill rộng 300px, neo tại 50% → giới hạn offset để không ra ngoài màn hình
-                local halfPill = 154  -- 300/2 + 4px padding
+                local halfPill = 169  -- 330/2 + 4px padding
                 local maxX     = math.floor(screenW / 2) - halfPill
                 local newX     = math.clamp(startPos.X.Offset + delta.X, -maxX, maxX)
                 local newY     = math.clamp(startPos.Y.Offset + delta.Y, 4, screenH - 40)
