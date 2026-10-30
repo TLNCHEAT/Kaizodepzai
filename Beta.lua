@@ -1179,9 +1179,29 @@ local function tryPatchTLN()
 end
 
 pcall(tryPatchTLN)
+
+-- Persistent root-level watcher: catch VenyxHub GUI added at any time
 task.spawn(function()
-    for _ = 1, 20 do
+    for _, root in ipairs(roots) do
+        if root then
+            root.ChildAdded:Connect(function()
+                task.wait(0.2)
+                pcall(tryPatchTLN)
+                task.wait(0.5)
+                pcall(tryPatchTLN)
+            end)
+        end
+    end
+end)
+
+-- Initial rapid scan (30s) then slow keepalive forever
+task.spawn(function()
+    for _ = 1, 60 do
         task.wait(0.5)
+        pcall(tryPatchTLN)
+    end
+    while true do
+        task.wait(4)
         pcall(tryPatchTLN)
     end
 end)
