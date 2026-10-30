@@ -389,6 +389,42 @@ local EXACT_MATCH_VI = {
     ["No plan"]="Chưa đăng ký",
     ["Active"]="Đang hoạt động",
     ["Join"]="Vào",
+    -- ===== BỔ SUNG TỪ ẢNH CHỤP (các chuỗi còn bỏ sót) =====
+    -- Dropdown options (Move to egg / Delivery method)
+    ["Walk"]="Đi bộ",
+    ["Teleport"]="Dịch chuyển",
+    ["Quick steps"]="Bước nhanh",
+    ["Fast tween"]="Bay nhanh",
+    ["Teleport delivery method"]="Phương thức dịch chuyển",
+    ["Move to egg"]="Di chuyển tới trứng",
+    -- Tab sự kiện
+    ["Halloween & Star"]="Halloween & Sao Băng",
+    ["HALLOWEEN & STAR"]="HALLOWEEN & SAO BĂNG",
+    ["The Hollow"]="The Hollow",
+    -- Halloween section
+    ["Steal missing Halloween index"]="Cướp Halloween thiếu trong Chỉ mục",
+    ["Place and hatch missing index eggs"]="Đặt và ấp trứng thiếu trong Chỉ mục",
+    -- Pumpkin Boss
+    ["PUMPKIN BOSS"]="PUMPKIN BOSS",
+    ["Auto Pumpkin boss"]="Tự động boss Pumpkin",
+    ["Auto dodge attacks"]="Tự động né đòn",
+    ["Auto claim mastery"]="Tự nhận Mastery",
+    ["Stubs pickup speed"]="Tốc độ nhặt Stubs",
+    ["Auto manor key"]="Tự nhận Manor Key",
+    ["KILLS"]="TIÊU DIỆT",
+    ["MANOR KEY"]="MANOR KEY",
+    -- Quái vật / Blood Moon
+    ["Monsters"]="Quái Vật",
+    ["Only during Blood Moon"]="Chỉ trong Blood Moon",
+    ["Farm all monsters in Blood Moon"]="Farm quái vật trong Blood Moon",
+    -- The Hollow racing
+    ["Auto race The Hollow"]="Tự động đua The Hollow",
+    ["Lower it if laps do not count"]="Giảm tốc nếu vòng đua không được tính",
+    -- Câu cá / Ghost Dog
+    ["Farm monsters while fishing"]="Farm quái vật khi câu cá",
+    ["Fishing spot"]="Điểm câu cá",
+    ["Save spot here"]="Lưu điểm này",
+    ["FISHING HISTORY"]="LỊCH SỬ CÂU CÁ",
     -- Trạng thái chung
     ["Enabled"]="Đã bật",
     ["Disabled"]="Đã tắt",
@@ -1247,6 +1283,18 @@ local function tryPatchTLN()
                         if titleLbl.Text ~= NEW_TITLE then
                             titleLbl.Text = NEW_TITLE; titleLbl.AutomaticSize = Enum.AutomaticSize.X
                         end
+                        -- Fast-retry: nếu pill chưa tạo (AbsolutePosition chưa ready), scan nhanh lại
+                        if not gui:GetAttribute("__IslandLocked") and not gui:GetAttribute("__IslandFastRetry") then
+                            gui:SetAttribute("__IslandFastRetry", true)
+                            task.spawn(function()
+                                for _, t in ipairs({0.15, 0.35, 0.65, 1.2}) do
+                                    task.wait(t)
+                                    if gui:GetAttribute("__IslandLocked") then break end
+                                    pcall(tryPatchTLN)
+                                end
+                                gui:SetAttribute("__IslandFastRetry", false)
+                            end)
+                        end
                         local mainWindow = nil; local curr = titleLbl
                         while curr.Parent and curr.Parent ~= gui do
                             curr = curr.Parent
@@ -1317,8 +1365,8 @@ task.spawn(function()
             root.ChildAdded:Connect(function()
                 if _scanPending then return end
                 _scanPending = true
-                task.wait(0.5)
-                pcall(tryPatchTLN)
+                task.wait(0.3); pcall(tryPatchTLN)   -- lần 1: layout đã có sơ bộ
+                task.wait(0.7); pcall(tryPatchTLN)   -- lần 2: pill fallback nếu lần 1 miss
                 _scanPending = false
             end)
         end
