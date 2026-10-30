@@ -73,7 +73,7 @@ if not getgenv().__ChilliV5RainbowLoop then
                 if g and g.Parent then g.Rotation = rot
                 else table.remove(ActiveGradients, i) end
             end
-            task.wait(0.03)
+            task.wait(0.05)  -- giảm từ 0.03 → bớt giật
         end
     end)
 end
@@ -389,6 +389,58 @@ local EXACT_MATCH_VI = {
     ["No plan"]="Chưa đăng ký",
     ["Active"]="Đang hoạt động",
     ["Join"]="Vào",
+    -- Trạng thái chung
+    ["Enabled"]="Đã bật",
+    ["Disabled"]="Đã tắt",
+    ["ON"]="BẬT",
+    ["Loading..."]="Đang tải...",
+    ["Please wait..."]="Vui lòng chờ...",
+    ["Copied!"]="Đã chép!",
+    ["Click to copy"]="Nhấn để chép",
+    ["Success"]="Thành công",
+    ["Error"]="Lỗi",
+    ["No servers found"]="Không tìm thấy máy chủ",
+    ["No results"]="Không có kết quả",
+    -- Gói tài khoản
+    ["Premium"]="Premium",
+    ["Basic"]="Cơ bản",
+    ["Pro"]="Pro",
+    ["Key"]="Key",
+    -- Thời gian từ (dạng đầy đủ)
+    ["just now"]="vừa xong",
+    ["Just now"]="Vừa xong",
+    ["1 second ago"]="1 giây trước",
+    ["1 minute ago"]="1 phút trước",
+    ["1 hour ago"]="1 giờ trước",
+    ["1 day ago"]="1 ngày trước",
+    -- Trạng thái kết nối
+    ["Connected"]="Đã kết nối",
+    ["Disconnected"]="Mất kết nối",
+    ["Not connected"]="Chưa kết nối",
+    -- Thông báo hay gặp
+    ["None selected"]="Chưa chọn",
+    ["Select one"]="Chọn một",
+    ["No items"]="Không có mục nào",
+    ["Confirm"]="Xác nhận",
+    ["Cancel"]="Hủy",
+    ["Apply"]="Áp dụng",
+    ["Close"]="Đóng",
+    ["Open"]="Mở",
+    ["Back"]="Quay lại",
+    ["Next"]="Tiếp",
+    ["Done"]="Xong",
+    ["Retry"]="Thử lại",
+    ["Refresh"]="Làm mới",
+    ["Update"]="Cập nhật",
+    -- Cướp / event
+    ["Waiting for event"]="Đang chờ sự kiện",
+    ["Event ended"]="Sự kiện đã kết thúc",
+    ["Event starting"]="Sự kiện sắp bắt đầu",
+    ["No egg to steal"]="Không có trứng để cướp",
+    ["Bag full"]="Đầy túi",
+    ["Sold"]="Đã bán",
+    ["Placed"]="Đã đặt",
+    ["Hatched"]="Đã ấp",
 }
 
 -- ---- EXACT ID (from TLN_CHEAT_FULL) ----
@@ -744,11 +796,21 @@ local FALLBACK_VERB_PREFIX_VI = {
 }
 local DYNAMIC_PATTERNS_VI = {
     {pat="^QUICK BAR (%d+)$",rep="THANH NHANH %1"},
-    -- Thời gian "X ago"
+    -- Thời gian "X ago" dạng viết tắt
     {pat="^(%d+)s ago$",rep="%1 giây trước"},
     {pat="^(%d+)m ago$",rep="%1 phút trước"},
     {pat="^(%d+)h ago$",rep="%1 giờ trước"},
     {pat="^(%d+)d ago$",rep="%1 ngày trước"},
+    -- Thời gian "X ago" dạng đầy đủ
+    {pat="^(%d+) seconds? ago$",rep="%1 giây trước"},
+    {pat="^(%d+) minutes? ago$",rep="%1 phút trước"},
+    {pat="^(%d+) hours? ago$",rep="%1 giờ trước"},
+    {pat="^(%d+) days? ago$",rep="%1 ngày trước"},
+    {pat="^just now$",rep="vừa xong"},
+    -- Countdown timer "Xm Xs" hoặc "Xh Xm"
+    {pat="^(%d+)m (%d+)s$",rep="%1 phút %2 giây"},
+    {pat="^(%d+)h (%d+)m$",rep="%1 giờ %2 phút"},
+    {pat="^(%d+)h (%d+)m (%d+)s$",rep="%1 giờ %2 phút %3 giây"},
     -- Steal Panel buttons động
     {pat="^Auto Steal: (ON)$",rep="Tự Động Cướp: BẬT"},
     {pat="^Auto Steal: (OFF)$",rep="Tự Động Cướp: TẮT"},
@@ -1167,16 +1229,18 @@ local function tryPatchTLN()
         if root then
             for _, gui in ipairs(root:GetChildren()) do
                 if gui:IsA("ScreenGui") and gui.Name ~= "RobloxGui" and gui.Name ~= "TopBarApp" then
-                    for _, d in ipairs(gui:GetDescendants()) do
-                        if (d:IsA("TextLabel") or d:IsA("TextButton")) and isFpsCounterText(d.Text) then
-                            hookFakeFpsCounter(d)
-                        end
-                    end
+                    -- Gộp 2 pass thành 1 để tránh GetDescendants() 2 lần
                     local titleLbl = nil
-                    for _, d in ipairs(gui:GetDescendants()) do
-                        if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d:FindFirstAncestorOfClass("ScrollingFrame") then
-                            local t = d.Text
-                            if t == "VENYX" or t == NEW_TITLE then titleLbl = d; break end
+                    local allDesc = gui:GetDescendants()
+                    for _, d in ipairs(allDesc) do
+                        if d:IsA("TextLabel") or d:IsA("TextButton") then
+                            if isFpsCounterText(d.Text) then
+                                hookFakeFpsCounter(d)
+                            end
+                            if not titleLbl and not d:FindFirstAncestorOfClass("ScrollingFrame") then
+                                local t = d.Text
+                                if t == "VENYX" or t == NEW_TITLE then titleLbl = d end
+                            end
                         end
                     end
                     if titleLbl then
@@ -1207,7 +1271,7 @@ local function tryPatchTLN()
                                 setupUnclippedCircularLogo(topChild)
                             end
                         end
-                        for _, desc in ipairs(gui:GetDescendants()) do
+                        for _, desc in ipairs(allDesc) do
                             if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
                                 local txt = desc.Text or ""; local origTxt = desc:GetAttribute("OrigRawText") or ""
                                 local isAlreadyMovedIdle = desc:GetAttribute("__IslandDone")
@@ -1245,25 +1309,30 @@ end
 -- tryPatchTLN chạy NGAY - không cần chờ hub API
 pcall(tryPatchTLN)
 
--- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào
+-- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào (debounce để không scan 2 lần)
 task.spawn(function()
     for _, root in ipairs(roots) do
         if root then
+            local _scanPending = false
             root.ChildAdded:Connect(function()
-                task.wait(0.2); pcall(tryPatchTLN)
-                task.wait(0.5); pcall(tryPatchTLN)
+                if _scanPending then return end
+                _scanPending = true
+                task.wait(0.5)
+                pcall(tryPatchTLN)
+                _scanPending = false
             end)
         end
     end
 end)
 
--- Rapid scan 30s rồi keepalive mãi
+-- Rapid scan 30s rồi keepalive mãi (giảm tần suất để bớt giật)
 task.spawn(function()
-    for _ = 1, 60 do
-        task.wait(0.5); pcall(tryPatchTLN)
+    task.desync()  -- chạy off main thread, không block render
+    for _ = 1, 30 do
+        task.wait(1); pcall(tryPatchTLN)
     end
     while true do
-        task.wait(4); pcall(tryPatchTLN)
+        task.wait(7); pcall(tryPatchTLN)
     end
 end)
 
