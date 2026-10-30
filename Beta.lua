@@ -709,6 +709,27 @@ local EXACT_MATCH_ID = {
     ["Instant steps"]="Langkah instan",["STEAL / AUTO STEAL"]="CURI / CURI OTOMATIS",
     ["Ping user ID"]="Ping User ID",["Discord user ID"]="Masukkan Discord User ID",
     ["Ping role ID"]="Ping Role ID",["Discord role ID"]="Masukkan Discord Role ID",
+    -- Steal Panel
+    ["Steal Panel"]="Panel Curi Telur",
+    ["STEAL"]="CURI",
+    ["Auto Steal: ON"]="Curi Otomatis: NYALA",
+    ["Auto Steal: OFF"]="Curi Otomatis: MATI",
+    ["Halloween: ON"]="Halloween: NYALA",
+    ["Halloween: OFF"]="Halloween: MATI",
+    ["Eggs: All"]="Telur: Semua",
+    ["Eggs: Filter"]="Telur: Filter",
+    -- Chilli Finder
+    ["Chilli Finder"]="Cari Server",
+    ["AUTO OFF"]="MATI OTOMATIS",
+    ["AUTO ON"]="NYALA OTOMATIS",
+    ["FORCE JOIN"]="MASUK PAKSA",
+    ["MIN VALUE"]="NILAI MINIMUM",
+    ["RARITY"]="KELANGKAAN",
+    ["ACCOUNT"]="AKUN",
+    ["Any"]="Semua",
+    ["No plan"]="Belum berlangganan",
+    ["Active"]="Aktif",
+    ["Join"]="Masuk",
 }
 
 -- ---- PATTERNS ID (from TLN_CHEAT_FULL) ----
@@ -749,6 +770,45 @@ local DYNAMIC_PATTERNS_ID = {
     {pat="^READY (%d+)$",rep="SIAP %1"},
     {pat="^GROWING (%d+)$",rep="TUMBUH %1"},
     {pat="^IN BAG (%d+)$",rep="DI TAS %1"},
+    -- Waktu "X ago" singkat
+    {pat="^(%d+)s ago$",rep="%1 detik lalu"},
+    {pat="^(%d+)m ago$",rep="%1 menit lalu"},
+    {pat="^(%d+)h ago$",rep="%1 jam lalu"},
+    {pat="^(%d+)d ago$",rep="%1 hari lalu"},
+    -- Waktu "X ago" panjang
+    {pat="^(%d+) seconds? ago$",rep="%1 detik lalu"},
+    {pat="^(%d+) minutes? ago$",rep="%1 menit lalu"},
+    {pat="^(%d+) hours? ago$",rep="%1 jam lalu"},
+    {pat="^(%d+) days? ago$",rep="%1 hari lalu"},
+    {pat="^just now$",rep="baru saja"},
+    -- Chilli Finder
+    {pat="^Hi (.+), no active booking%. Book hours at (.+)$",rep="Hei %1, belum ada pemesanan aktif. Pesan di %2"},
+    {pat="^Hi (.+), your booking is active%. Enjoy%!$",rep="Hei %1, pemesanan aktif. Selamat bermain!"},
+    -- Countdown timer
+    {pat="^(%d+)m (%d+)s$",rep="%1 menit %2 detik"},
+    {pat="^(%d+)h (%d+)m$",rep="%1 jam %2 menit"},
+    {pat="^(%d+)h (%d+)m (%d+)s$",rep="%1 jam %2 menit %3 detik"},
+    -- Steal Panel tombol dinamis
+    {pat="^Auto Steal: (ON)$",rep="Curi Otomatis: NYALA"},
+    {pat="^Auto Steal: (OFF)$",rep="Curi Otomatis: MATI"},
+    {pat="^Halloween: (ON)$",rep="Halloween: NYALA"},
+    {pat="^Halloween: (OFF)$",rep="Halloween: MATI"},
+    {pat="^Eggs: (.+)$",rep="Telur: %1"},
+    -- Generic ON/OFF suffix (fallback)
+    {pat="^(.+): ON$",rep="%1: NYALA"},
+    {pat="^(.+): OFF$",rep="%1: MATI"},
+    -- Patch nama Venyx
+    {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 jam lalu"},
+    {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 menit lalu"},
+    {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 hari lalu"},
+    -- Pen / telur dinamis
+    {pat="Pen (%d+/%d+) · (%d+) egg%(s%) ready to place",rep="Kandang %1 · %2 telur siap ditempatkan"},
+    {pat="(%d+) egg%(s%) can be mutated",rep="%1 telur bisa dimutasi"},
+    {pat="(%d+) pet%(s%) match",rep="%1 pet cocok filter"},
+    {pat="(%d+) egg%(s%) match",rep="%1 telur cocok filter"},
+    {pat="(%d+) lab egg%(s%) match",rep="%1 telur Lab cocok filter"},
+    {pat="^(%d+) pets$",rep="%1 hewan peliharaan"},
+    {pat="(%d+ / %d+) players · (.+)",rep="%1 pemain · %2"},
 }
 
 -- ---- PATTERNS VI (merged – FULL base + Beta extras) ----
