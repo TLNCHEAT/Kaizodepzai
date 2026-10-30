@@ -11,10 +11,32 @@ local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 -- ==================== 1. LOAD VENYXHUB ====================
 if not getgenv().__TLNV5NewLoaded then
     getgenv().__TLNV5NewLoaded = true
+    getgenv().__TLNHubReady    = false
+    getgenv().__TLNHub         = nil
     task.spawn(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"))()
+        local ok, result = pcall(function()
+            return loadstring(game:HttpGet(
+                "https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"
+            ))()
         end)
+        if ok then
+            getgenv().__TLNHub      = result   -- hub object (nếu hub trả về)
+            getgenv().__TLNHubReady = true
+        else
+            warn("[TLN] VenyxHub load failed:", result)
+            getgenv().__TLNHubReady = true     -- vẫn set true để không treo loop
+        end
+    end)
+end
+
+-- Helper: chờ hub sẵn sàng rồi chạy callback
+local function onHubReady(callback)
+    task.spawn(function()
+        local t = 0
+        while not getgenv().__TLNHubReady and t < 30 do
+            task.wait(0.3); t = t + 0.3
+        end
+        callback(getgenv().__TLNHub)
     end)
 end
 
@@ -346,6 +368,27 @@ local EXACT_MATCH_VI = {
     ["Clear all quick bars"]="Xóa tất cả thanh nhanh",["Clear all keybinds"]="Xóa tất cả phím tắt",
     ["Instant steps"]="Bước tức thì",["STEAL / AUTO STEAL"]="CƯỚP / TỰ ĐỘNG CƯỚP",
     ["slider"]="thanh trượt",["+ PIN"]="+ GHIM",
+    -- Steal Panel
+    ["Steal Panel"]="Bảng Cướp Trứng",
+    ["STEAL"]="CƯỚP",
+    ["Auto Steal: ON"]="Tự Động Cướp: BẬT",
+    ["Auto Steal: OFF"]="Tự Động Cướp: TẮT",
+    ["Halloween: ON"]="Halloween: BẬT",
+    ["Halloween: OFF"]="Halloween: TẮT",
+    ["Eggs: All"]="Trứng: Tất Cả",
+    ["Eggs: Filter"]="Trứng: Lọc",
+    -- Chilli Finder
+    ["Chilli Finder"]="Tìm Máy Chủ",
+    ["AUTO OFF"]="TỰ ĐỘNG TẮT",
+    ["AUTO ON"]="TỰ ĐỘNG BẬT",
+    ["FORCE JOIN"]="VÀO NGAY",
+    ["MIN VALUE"]="GIÁ TRỊ TỐI THIỂU",
+    ["RARITY"]="ĐỘ HIẾM",
+    ["ACCOUNT"]="TÀI KHOẢN",
+    ["Any"]="Bất Kỳ",
+    ["No plan"]="Chưa đăng ký",
+    ["Active"]="Đang hoạt động",
+    ["Join"]="Vào",
 }
 
 -- ---- EXACT ID (from TLN_CHEAT_FULL) ----
@@ -701,6 +744,20 @@ local FALLBACK_VERB_PREFIX_VI = {
 }
 local DYNAMIC_PATTERNS_VI = {
     {pat="^QUICK BAR (%d+)$",rep="THANH NHANH %1"},
+    -- Thời gian "X ago"
+    {pat="^(%d+)s ago$",rep="%1 giây trước"},
+    {pat="^(%d+)m ago$",rep="%1 phút trước"},
+    {pat="^(%d+)h ago$",rep="%1 giờ trước"},
+    {pat="^(%d+)d ago$",rep="%1 ngày trước"},
+    -- Steal Panel buttons động
+    {pat="^Auto Steal: (ON)$",rep="Tự Động Cướp: BẬT"},
+    {pat="^Auto Steal: (OFF)$",rep="Tự Động Cướp: TẮT"},
+    {pat="^Halloween: (ON)$",rep="Halloween: BẬT"},
+    {pat="^Halloween: (OFF)$",rep="Halloween: TẮT"},
+    {pat="^Eggs: (.+)$",rep="Trứng: %1"},
+    -- Generic ON/OFF suffix (fallback)
+    {pat="^(.+): ON$",rep="%1: BẬT"},
+    {pat="^(.+): OFF$",rep="%1: TẮT"},
     {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 giờ trước"},
     {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 phút trước"},
     {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 ngày trước"},
@@ -1005,10 +1062,13 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
             if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
                 local delta = input.Position - dragStart
                 local cam = workspace.CurrentCamera
-                local maxX = cam and cam.ViewportSize.X - 140 or 800
-                local maxY = cam and cam.ViewportSize.Y - 50 or 600
-                local newX = math.clamp(startPos.X.Offset + delta.X, -maxX/2, maxX/2)
-                local newY = math.clamp(startPos.Y.Offset + delta.Y, 4, maxY)
+                local screenW = cam and cam.ViewportSize.X or 800
+                local screenH = cam and cam.ViewportSize.Y or 600
+                -- pill rộng 300px, neo tại 50% → giới hạn offset để không ra ngoài màn hình
+                local halfPill = 154  -- 300/2 + 4px padding
+                local maxX     = math.floor(screenW / 2) - halfPill
+                local newX     = math.clamp(startPos.X.Offset + delta.X, -maxX, maxX)
+                local newY     = math.clamp(startPos.Y.Offset + delta.Y, 4, screenH - 40)
                 moveFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
@@ -1178,33 +1238,46 @@ local function tryPatchTLN()
     end
 end
 
-pcall(tryPatchTLN)
+-- Chạy patch sau khi hub ready
+onHubReady(function()
+    pcall(tryPatchTLN)
 
--- Persistent root-level watcher: catch VenyxHub GUI added at any time
-task.spawn(function()
+    -- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào
     for _, root in ipairs(roots) do
         if root then
             root.ChildAdded:Connect(function()
-                task.wait(0.2)
-                pcall(tryPatchTLN)
-                task.wait(0.5)
-                pcall(tryPatchTLN)
+                task.wait(0.2); pcall(tryPatchTLN)
+                task.wait(0.5); pcall(tryPatchTLN)
             end)
         end
     end
+
+    -- Rapid scan 30s rồi keepalive mãi
+    task.spawn(function()
+        for _ = 1, 60 do
+            task.wait(0.5); pcall(tryPatchTLN)
+        end
+        while true do
+            task.wait(4); pcall(tryPatchTLN)
+        end
+    end)
 end)
 
--- Initial rapid scan (30s) then slow keepalive forever
-task.spawn(function()
-    for _ = 1, 60 do
-        task.wait(0.5)
-        pcall(tryPatchTLN)
-    end
-    while true do
-        task.wait(4)
-        pcall(tryPatchTLN)
-    end
-end)
+-- ==================== THÊM CHỨC NĂNG TẠI ĐÂY ====================
+-- Dùng onHubReady để đảm bảo hub đã load xong trước khi thêm
+-- Ví dụ:
+-- onHubReady(function(Hub)
+--     if not Hub then return end
+--     local tab = Hub:MakeTab({ Name = "Custom" })
+--     local sec = tab:AddSection({ Name = "My Features" })
+--     sec:AddToggle({
+--         Name    = "Tên chức năng",
+--         Default = false,
+--         Callback = function(v)
+--             -- code ở đây
+--         end
+--     })
+-- end)
 
 -- ==================== 8. TELEGRAM + WHAT'S NEW + CHILLI HUB PATCH ====================
 task.spawn(function()
