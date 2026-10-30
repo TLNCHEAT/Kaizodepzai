@@ -843,6 +843,9 @@ local DYNAMIC_PATTERNS_VI = {
     {pat="^(%d+) hours? ago$",rep="%1 giờ trước"},
     {pat="^(%d+) days? ago$",rep="%1 ngày trước"},
     {pat="^just now$",rep="vừa xong"},
+    -- Chilli Finder
+    {pat="^Hi (.+), no active booking%. Book hours at (.+)$",rep="Xin chào %1, chưa có lịch đặt. Đặt lịch tại %2"},
+    {pat="^Hi (.+), your booking is active%. Enjoy%!$",rep="Xin chào %1, lịch đặt đang hoạt động. Chúc vui!"},
     -- Countdown timer "Xm Xs" hoặc "Xh Xm"
     {pat="^(%d+)m (%d+)s$",rep="%1 phút %2 giây"},
     {pat="^(%d+)h (%d+)m$",rep="%1 giờ %2 phút"},
@@ -1279,6 +1282,16 @@ local function tryPatchTLN()
                             end
                         end
                     end
+                    -- Hook DescendantAdded cho MỌI ScreenGui (bao gồm Steal Panel, Chilli Finder)
+                    if not gui:GetAttribute("__TextListenerAttached") then
+                        gui:SetAttribute("__TextListenerAttached", true)
+                        gui.DescendantAdded:Connect(function(newDesc)
+                            if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
+                                task.defer(function() hookTextForTranslation(newDesc) end)
+                            end
+                        end)
+                    end
+
                     if titleLbl then
                         if titleLbl.Text ~= NEW_TITLE then
                             titleLbl.Text = NEW_TITLE; titleLbl.AutomaticSize = Enum.AutomaticSize.X
@@ -1304,14 +1317,6 @@ local function tryPatchTLN()
                         end
                         local headerY = titleLbl.AbsolutePosition.Y
                         if mainWindow then patchHeaderLogoLeftOfTitle(mainWindow, titleLbl) end
-                        if not gui:GetAttribute("__TextListenerAttached") then
-                            gui:SetAttribute("__TextListenerAttached", true)
-                            gui.DescendantAdded:Connect(function(newDesc)
-                                if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
-                                    task.defer(function() hookTextForTranslation(newDesc) end)
-                                end
-                            end)
-                        end
                         for _, topChild in ipairs(gui:GetChildren()) do
                             if topChild:IsA("GuiObject") and topChild ~= mainWindow
                             and topChild.Name ~= "ChilliV5_ExpandedIsland"
@@ -1323,7 +1328,7 @@ local function tryPatchTLN()
                             if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
                                 local txt = desc.Text or ""; local origTxt = desc:GetAttribute("OrigRawText") or ""
                                 local isAlreadyMovedIdle = desc:GetAttribute("__IslandDone")
-                                local isStatusKeyword = txt:lower():find("idle") or origTxt:lower():find("idle") or txt == "Đang rảnh"
+                                local isStatusKeyword = txt == "" or txt:lower():find("idle") or txt:lower():find("waiting") or txt:lower():find("nothing") or origTxt:lower():find("idle") or txt == "Đang rảnh" or txt == "Menganggur"
                                 local isHeaderIdle = (not gui:GetAttribute("__IslandLocked"))
                                     and (not desc:FindFirstAncestorOfClass("ScrollingFrame"))
                                     and desc.Parent
@@ -1345,6 +1350,13 @@ local function tryPatchTLN()
                                         setupUnclippedCircularLogo(desc)
                                     end
                                 end
+                            end
+                        end
+                    else
+                        -- ScreenGui không phải hub (Steal Panel, Chilli Finder...): dịch text trực tiếp
+                        for _, d in ipairs(allDesc) do
+                            if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+                                hookTextForTranslation(d)
                             end
                         end
                     end
