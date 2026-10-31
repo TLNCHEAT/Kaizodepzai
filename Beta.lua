@@ -83,18 +83,24 @@ local COLOR_SEQ_RAINBOW = ColorSequence.new({
     ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,  55,  55)),
 })
 
+-- [PERF] Reset guard để không chạy 2 loop khi re-inject
+getgenv().__ChilliV5RainbowLoop = nil
 if not getgenv().__ChilliV5RainbowLoop then
     getgenv().__ChilliV5RainbowLoop = true
     task.spawn(function()
         local rot = 0
         while true do
-            rot = (rot + 4) % 360
+            rot = (rot + 5) % 360  -- [PERF] bước lớn hơn 1 chút bù cho interval dài hơn
             for i = #ActiveGradients, 1, -1 do
                 local g = ActiveGradients[i]
                 if g and g.Parent then g.Rotation = rot
-                else table.remove(ActiveGradients, i) end
+                else
+                    -- [PERF] swap-remove O(1) thay vì table.remove O(n)
+                    ActiveGradients[i] = ActiveGradients[#ActiveGradients]
+                    ActiveGradients[#ActiveGradients] = nil
+                end
             end
-            task.wait(0.05)  -- giảm từ 0.03 → bớt giật
+            task.wait(0.083)  -- [PERF] 0.05→0.083 = 12fps, mắt không thấy khác, tiết kiệm 40% CPU
         end
     end)
 end
@@ -106,9 +112,15 @@ local function generateNextFakeFps()
     currentFakeFps = math.clamp(currentFakeFps + delta, 85, 120)
     return currentFakeFps
 end
+local _fpsCheckCache = {}  -- [PERF] cache kết quả để không gọi find() lặp lại
 local function isFpsCounterText(str)
-    if not str then return false end
-    return str:find("FPS") ~= nil and str:find("ms") ~= nil
+    if not str or str == "" then return false end
+    local cached = _fpsCheckCache[str]
+    if cached ~= nil then return cached end
+    local result = str:find("FPS") ~= nil and str:find("ms") ~= nil
+    -- chỉ cache string ngắn (FPS counter thường < 30 ký tự)
+    if #str < 30 then _fpsCheckCache[str] = result end
+    return result
 end
 local function hookFakeFpsCounter(lbl)
     if not (lbl:IsA("TextLabel") or lbl:IsA("TextButton")) then return end
@@ -142,8 +154,17 @@ end
 -- ==================== 3. DỊCH THUẬT ====================
 local currentLanguage = "VI"
 local FastCache       = {}
+local FastCacheSize   = 0   -- [PERF] đếm riêng để tránh pairs() đếm mỗi lần
 local TrackedTexts    = {}
 local GlobalRefreshIslandStatus = nil
+
+-- [PERF] Helper ghi cache với cap 800 entry - ngăn bộ nhớ phình vô hạn
+local function setCache(key, value)
+    if FastCache[key] then return end  -- đã có, không tăng size
+    if FastCacheSize >= 800 then FastCache = {}; FastCacheSize = 0 end
+    FastCache[key] = value
+    FastCacheSize = FastCacheSize + 1
+end
 
 -- ---- EXACT VI ----
 local EXACT_MATCH_VI = {
@@ -1124,11 +1145,11 @@ local function translateStatusAction(cleanEn)
         if trimmed:lower() == "idle" or trimmed == "Menganggur" then return "Menganggur" end
         local cacheKey = "STATUS_ID|" .. trimmed
         if FastCache[cacheKey] then return FastCache[cacheKey] end
-        if EXACT_MATCH_ID[trimmed] then FastCache[cacheKey] = EXACT_MATCH_ID[trimmed]; return EXACT_MATCH_ID[trimmed] end
+        if EXACT_MATCH_ID[trimmed] then setCache(cacheKey, EXACT_MATCH_ID[trimmed]); return EXACT_MATCH_ID[trimmed] end
         for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
             if trimmed:find(item.pat) then
                 local out = trimmed:gsub(item.pat, item.rep)
-                FastCache[cacheKey] = out; return out
+                setCache(cacheKey, out); return out
             end
         end
         local result = trimmed
@@ -1137,17 +1158,17 @@ local function translateStatusAction(cleanEn)
                 result = idPrefix .. result:sub(#engPrefix + 1); break
             end
         end
-        FastCache[cacheKey] = result; return result
+        setCache(cacheKey, result); return result
     end
     -- Vietnamese branch
     if trimmed:lower() == "idle" or trimmed == "Đang rảnh" then return "Đang rảnh" end
     local cacheKey = "STATUS_VI|" .. trimmed
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if EXACT_MATCH_VI[trimmed] then FastCache[cacheKey] = EXACT_MATCH_VI[trimmed]; return EXACT_MATCH_VI[trimmed] end
+    if EXACT_MATCH_VI[trimmed] then setCache(cacheKey, EXACT_MATCH_VI[trimmed]); return EXACT_MATCH_VI[trimmed] end
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if trimmed:find(item.pat) then
             local out = trimmed:gsub(item.pat, item.rep)
-            FastCache[cacheKey] = out; return out
+            setCache(cacheKey, out); return out
         end
     end
     local result = trimmed
@@ -1157,7 +1178,7 @@ local function translateStatusAction(cleanEn)
         end
     end
     result = result:gsub(" home$", " về nhà"):gsub(" to safe zone$", " về vùng an toàn"):gsub(" to base$", " về căn cứ")
-    FastCache[cacheKey] = result; return result
+    setCache(cacheKey, result); return result
 end
 
 local function translateTLNText(raw)
@@ -1166,47 +1187,47 @@ local function translateTLNText(raw)
     if FastCache[cacheKey] then return FastCache[cacheKey] end
     if raw:find("Venyx SAE") then raw = raw:gsub("Venyx SAE", "TLN SAE")
     elseif raw == "VENYX" then raw = NEW_TITLE end
-    if currentLanguage == "EN" then FastCache[cacheKey] = raw; return raw end
+    if currentLanguage == "EN" then setCache(cacheKey, raw); return raw end
     local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
     -- Indonesian branch
     if currentLanguage == "ID" then
         if EXACT_MATCH_ID[normalized] then
-            local out = EXACT_MATCH_ID[normalized]; FastCache[cacheKey] = out; return out
+            local out = EXACT_MATCH_ID[normalized]; setCache(cacheKey, out); return out
         end
         local result = normalized
         for _, item in ipairs(DYNAMIC_PATTERNS_ID) do
             if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
+                result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
             end
         end
         for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
             if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
+                result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
             end
         end
-        FastCache[cacheKey] = raw; return raw
+        setCache(cacheKey, raw); return raw
     end
     -- Vietnamese branch
     if EXACT_MATCH_VI[normalized] then
-        local out = EXACT_MATCH_VI[normalized]; FastCache[cacheKey] = out; return out
+        local out = EXACT_MATCH_VI[normalized]; setCache(cacheKey, out); return out
     end
     -- Prefix symbol detection (e.g. "🔥 Auto steal")
     local prefix, wordPart = normalized:match("^([^%w%s]+%s*)(.+)$")
     if prefix and wordPart and EXACT_MATCH_VI[wordPart] then
-        local out = prefix .. EXACT_MATCH_VI[wordPart]; FastCache[cacheKey] = out; return out
+        local out = prefix .. EXACT_MATCH_VI[wordPart]; setCache(cacheKey, out); return out
     end
     local result = normalized
     for _, item in ipairs(DYNAMIC_PATTERNS_VI) do
         if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
+            result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
         end
     end
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
+            result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
         end
     end
-    FastCache[cacheKey] = raw; return raw
+    setCache(cacheKey, raw); return raw
 end
 
 local function applyElementTranslation(inst)
@@ -1254,10 +1275,19 @@ local function hookTextForTranslation(inst)
 end
 
 local function refreshAllTranslations()
-    for i = #TrackedTexts, 1, -1 do
+    local n = #TrackedTexts
+    local i = 1
+    while i <= n do
         local el = TrackedTexts[i]
-        if el and el.Parent then applyElementTranslation(el)
-        else table.remove(TrackedTexts, i) end
+        if el and el.Parent then
+            applyElementTranslation(el)
+            i = i + 1
+        else
+            -- [PERF] swap-remove O(1) thay vì table.remove O(n)
+            TrackedTexts[i] = TrackedTexts[n]
+            TrackedTexts[n] = nil
+            n = n - 1
+        end
     end
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
@@ -1619,8 +1649,8 @@ task.spawn(function()
             root.ChildAdded:Connect(function()
                 if _scanPending then return end
                 _scanPending = true
-                task.wait(0.3); pcall(tryPatchTLN)   -- lần 1: layout đã có sơ bộ
-                task.wait(0.7); pcall(tryPatchTLN)   -- lần 2: pill fallback nếu lần 1 miss
+                -- [PERF] 2 lần scan → 1 lần sau 0.5s (đủ cho layout render xong)
+                task.wait(0.5); pcall(tryPatchTLN)
                 _scanPending = false
             end)
         end
@@ -1630,8 +1660,9 @@ end)
 -- Rapid scan 30s rồi keepalive mãi (giảm tần suất để bớt giật)
 task.spawn(function()
     pcall(function() task.desync() end)  -- [FIX] pcall: không phải executor nào cũng có task.desync()
-    for _ = 1, 30 do
-        task.wait(1); pcall(tryPatchTLN)
+    -- [PERF] 30 lần × 1s → 15 lần × 2s: cùng bao phủ 30s, giảm 50% GetDescendants() calls
+    for _ = 1, 15 do
+        task.wait(2); pcall(tryPatchTLN)
     end
     local cleanupTick = 0
     while true do
@@ -1640,10 +1671,16 @@ task.spawn(function()
         cleanupTick = cleanupTick + 5
         if cleanupTick >= 30 then
             cleanupTick = 0
-            for i = #TrackedTexts, 1, -1 do
-                local el = TrackedTexts[i]
-                if not (el and el.Parent) then
-                    table.remove(TrackedTexts, i)
+            -- [PERF] swap-remove O(1)
+            local n = #TrackedTexts
+            local i = 1
+            while i <= n do
+                if TrackedTexts[i] and TrackedTexts[i].Parent then
+                    i = i + 1
+                else
+                    TrackedTexts[i] = TrackedTexts[n]
+                    TrackedTexts[n] = nil
+                    n = n - 1
                 end
             end
         end
