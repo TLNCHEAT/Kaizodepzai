@@ -1479,10 +1479,8 @@ local function tryPatchTLN()
                     -- Skip full rescan nếu GUI đã được patch hoàn chỉnh (giảm giật)
                     local nonHubDone = gui:GetAttribute("__TLNNonHubScanned")
                     local hubDone    = gui:GetAttribute("__IslandLocked")
-                    if gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone) then
-                        -- DescendantAdded đã lo phần tử mới, không cần rescan toàn bộ
-                        goto __skipGui
-                    end
+                    local skipScan   = gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone)
+                    if not skipScan then
                     -- Gộp 2 pass thành 1 để tránh GetDescendants() 2 lần
                     local titleLbl = nil
                     local allDesc = gui:GetDescendants()
@@ -1582,7 +1580,7 @@ local function tryPatchTLN()
                         -- Đánh dấu đã scan xong: lần sau bỏ qua, DescendantAdded lo tiếp
                         gui:SetAttribute("__TLNNonHubScanned", true)
                     end
-                    ::__skipGui::
+                    end -- end if not skipScan
                 end
             end
         end
