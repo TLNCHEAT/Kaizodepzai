@@ -9,6 +9,8 @@ local LOGO_BG_COLOR   = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
 -- ==================== 1. LOAD VENYXHUB ====================
+-- [FIX] Reset guard mỗi lần inject lại để hub luôn được load mới
+getgenv().__TLNV5NewLoaded = nil
 if not getgenv().__TLNV5NewLoaded then
     getgenv().__TLNV5NewLoaded = true
     getgenv().__TLNHubReady    = false
@@ -25,6 +27,25 @@ if not getgenv().__TLNV5NewLoaded then
         else
             warn("[TLN] VenyxHub load failed:", result)
             getgenv().__TLNHubReady = true     -- vẫn set true để không treo loop
+            -- [FIX] Hiện thông báo lỗi nổi để người dùng biết hub không load được
+            pcall(function()
+                local sg = Instance.new("ScreenGui")
+                sg.Name = "TLN_LoadError"; sg.ResetOnSpawn = false
+                sg.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+                local fr = Instance.new("Frame", sg)
+                fr.Size = UDim2.new(0, 360, 0, 56)
+                fr.Position = UDim2.new(0.5, -180, 0, 60)
+                fr.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+                fr.BorderSizePixel = 0
+                Instance.new("UICorner", fr).CornerRadius = UDim.new(0, 8)
+                local lbl = Instance.new("TextLabel", fr)
+                lbl.Size = UDim2.new(1, -12, 1, 0); lbl.Position = UDim2.new(0, 6, 0, 0)
+                lbl.BackgroundTransparency = 1; lbl.TextColor3 = Color3.fromRGB(255, 90, 90)
+                lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 13; lbl.TextWrapped = true
+                lbl.TextXAlignment = Enum.TextXAlignment.Left
+                lbl.Text = "⚠ TLN CHEAT: VenyxHub load thất bại!\nKiểm tra kết nối mạng hoặc thử lại."
+                task.delay(8, function() pcall(function() sg:Destroy() end) end)
+            end)
         end
     end)
 end
@@ -1608,7 +1629,7 @@ end)
 
 -- Rapid scan 30s rồi keepalive mãi (giảm tần suất để bớt giật)
 task.spawn(function()
-    task.desync()  -- chạy off main thread, không block render
+    pcall(function() task.desync() end)  -- [FIX] pcall: không phải executor nào cũng có task.desync()
     for _ = 1, 30 do
         task.wait(1); pcall(tryPatchTLN)
     end
