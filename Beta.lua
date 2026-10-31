@@ -730,6 +730,73 @@ local EXACT_MATCH_ID = {
     ["No plan"]="Belum berlangganan",
     ["Active"]="Aktif",
     ["Join"]="Masuk",
+    -- ===== BỔ SUNG TỪ VI (các chuỗi còn thiếu trong ID) =====
+    ["slider"]="penggeser",["+ PIN"]="+ PIN",
+    ["Enabled"]="Diaktifkan",["Disabled"]="Dinonaktifkan",
+    ["ON"]="NYALA",["Loading..."]="Memuat...",["Please wait..."]="Harap tunggu...",
+    ["Copied!"]="Tersalin!",["Click to copy"]="Klik untuk salin",
+    ["Success"]="Berhasil",["Error"]="Kesalahan",
+    ["No servers found"]="Tidak ada server",["No results"]="Tidak ada hasil",
+    ["Premium"]="Premium",["Basic"]="Dasar",["Pro"]="Pro",["Key"]="Kunci",
+    ["just now"]="baru saja",["Just now"]="Baru saja",
+    ["1 second ago"]="1 detik lalu",["1 minute ago"]="1 menit lalu",
+    ["1 hour ago"]="1 jam lalu",["1 day ago"]="1 hari lalu",
+    ["Connected"]="Terhubung",["Disconnected"]="Terputus",["Not connected"]="Belum terhubung",
+    ["None selected"]="Belum dipilih",["Select one"]="Pilih satu",["No items"]="Tidak ada item",
+    ["Confirm"]="Konfirmasi",["Cancel"]="Batal",["Apply"]="Terapkan",["Close"]="Tutup",
+    ["Open"]="Buka",["Back"]="Kembali",["Next"]="Berikutnya",["Done"]="Selesai",
+    ["Retry"]="Coba lagi",["Refresh"]="Perbarui",["Update"]="Perbarui",
+    ["Waiting for event"]="Menunggu event",["Event ended"]="Event berakhir",
+    ["Event starting"]="Event dimulai",["No egg to steal"]="Tidak ada telur untuk dicuri",
+    ["Bag full"]="Tas penuh",["Sold"]="Terjual",["Placed"]="Ditempatkan",["Hatched"]="Menetas",
+    -- Dropdown di chức năng Move/Deliver
+    ["Walk"]="Jalan kaki",["Quick steps"]="Langkah cepat",
+    ["Fast tween"]="Terbang cepat",["Teleport delivery method"]="Metode antar teleport",
+    ["Move to egg"]="Bergerak ke telur",
+    -- Tab sự kiện
+    ["Halloween & Star"]="Halloween & Bintang Jatuh",
+    ["HALLOWEEN & STAR"]="HALLOWEEN & BINTANG JATUH",
+    ["The Hollow"]="The Hollow",
+    ["Steal missing Halloween index"]="Curi telur Halloween yang kurang",
+    ["Place and hatch missing index eggs"]="Tempatkan dan tetaskan telur indeks yang kurang",
+    -- Pumpkin Boss
+    ["PUMPKIN BOSS"]="BOSS LABU",
+    ["Auto Pumpkin boss"]="Boss Labu otomatis",
+    ["Auto dodge attacks"]="Hindari serangan otomatis",
+    ["Auto claim mastery"]="Klaim Mastery otomatis",
+    ["Stubs pickup speed"]="Kecepatan ambil Stubs",
+    ["Auto manor key"]="Ambil Kunci Manor otomatis",
+    ["KILLS"]="PEMBUNUHAN",["MANOR KEY"]="KUNCI MANOR",
+    -- Monster / Blood Moon
+    ["Monsters"]="Monster",
+    ["Only during Blood Moon"]="Hanya saat Blood Moon",
+    ["Farm all monsters in Blood Moon"]="Farm semua monster di Blood Moon",
+    -- The Hollow racing
+    ["Auto race The Hollow"]="Balapan The Hollow otomatis",
+    ["Lower it if laps do not count"]="Turunkan jika putaran tidak dihitung",
+    -- Câu cá / Ghost Dog
+    ["Farm monsters while fishing"]="Farm monster saat memancing",
+    ["Fishing spot"]="Titik memancing",
+    ["Save spot here"]="Simpan titik ini",
+    ["FISHING HISTORY"]="RIWAYAT MEMANCING",
+    -- Island / Zone names còn thiếu
+    ["Enchanted Forest"]="Hutan Terpesona (Enchanted Forest)",
+    ["Light Dark"]="Terang Gelap (Light Dark)",
+    ["Titan Temple"]="Kuil Titan (Titan Temple)",
+    ["Cherry Blossom"]="Bunga Sakura (Cherry Blossom)",
+    ["Prehistoric"]="Prasejarah (Prehistoric)",
+    ["Abyss Ocean"]="Samudra Jurang (Abyss Ocean)",
+    ["Volcano"]="Gunung Api (Volcano)",["Snow"]="Salju (Snow)",
+    ["Jungle"]="Hutan Lebat (Jungle)",["Desert"]="Gurun (Desert)",
+    ["Lake"]="Danau (Lake)",["Forest"]="Hutan (Forest)",
+    ["Silver"]="Perak (Silver)",["Rainbow"]="Pelangi (Rainbow)",
+    ["Golden"]="Emas (Golden)",["Fractured"]="Retak (Fractured)",
+    ["Scrambled"]="Acak (Scrambled)",["Enchanted"]="Terpesona (Enchanted)",
+    ["Nitro"]="Nitro",
+    ["SCRAMBLED"]="ACAK",["NITRO"]="NITRO",["FRACTURED"]="RETAK",["ENCHANTED"]="TERPESONA",
+    -- Prefix icon (emoji prefix cho auto steal, v.v.)
+    ["Top goes first. A carried egg is always delivered first, and before the field opens every task waits in the safe zone."]="Yang atas dikerjakan dulu. Telur yang dibawa selalu diantar duluan, dan sebelum area terbuka semua tugas menunggu di zona aman.",
+    ["A Shooting Star is rare and only you can catch yours. It lands in Cosmic, runs from you, and needs a 1.6 s hold."]="Bintang Jatuh sangat langka dan hanya kamu yang bisa menangkapnya. Ia mendarat di Kosmik, kabur dari kamu, dan butuh tahan 1,6 detik.",
 }
 
 -- ---- PATTERNS ID (from TLN_CHEAT_FULL) ----
@@ -754,6 +821,50 @@ local STATUS_ACTION_PATTERNS_ID = {
     {pat="^[Ff]using (.+)$",rep="Menggabungkan %1"},
     {pat="^[Cc]atching (.+)$",rep="Menangkap %1"},
     {pat="^[Ww]aiting for (.+)$",rep="Menunggu %1"},
+    -- Bổ sung từ VI
+    {pat="^[Bb]ringing (.+) home$",rep="Membawa %1 ke rumah"},
+    {pat="^[Bb]ringing (.+)$",rep="Membawa %1"},
+    {pat="^[Tt]aking (.+) from (.+)$",rep="Mengambil %1 dari %2"},
+    {pat="^[Tt]aking (.+) home$",rep="Membawa %1 ke rumah"},
+    {pat="^[Tt]aking (.+)$",rep="Mengambil %1"},
+    {pat="^[Gg]rabbing (.+)$",rep="Meraih %1"},
+    {pat="^[Pp]icking up (.+)$",rep="Memungut %1"},
+    {pat="^[Hh]olding (.+)$",rep="Memegang %1"},
+    {pat="^[Cc]apturing (.+)$",rep="Menangkap %1"},
+    {pat="^[Dd]ropping (.+) at (.+)$",rep="Menjatuhkan %1 di %2"},
+    {pat="^[Dd]ropping (.+)$",rep="Menjatuhkan %1"},
+    {pat="^[Ff]lying to (.+)$",rep="Terbang ke %1"},
+    {pat="^[Ww]alking to (.+)$",rep="Berjalan ke %1"},
+    {pat="^[Rr]unning to (.+)$",rep="Berlari ke %1"},
+    {pat="^[Hh]eading to (.+)$",rep="Menuju %1"},
+    {pat="^[Rr]eturning to (.+)$",rep="Kembali ke %1"},
+    {pat="^[Mm]utating (.+)$",rep="Mutasi %1"},
+    {pat="^[Uu]pgrading (.+)$",rep="Meningkatkan %1"},
+    {pat="^[Bb]uying (.+)$",rep="Membeli %1"},
+    {pat="^[Cc]laiming (.+)$",rep="Mengklaim %1"},
+    {pat="^[Ee]quipping (.+)$",rep="Memakai %1"},
+    {pat="^[Ff]avoriting (.+)$",rep="Memfavoritkan %1"},
+    {pat="^[Ee]jecting (.+)$",rep="Mengeluarkan %1"},
+    {pat="^[Cc]hasing (.+)$",rep="Mengejar %1"},
+    {pat="^[Aa]ttacking (.+)$",rep="Menyerang %1"},
+    {pat="^[Hh]itting (.+)$",rep="Memukul %1"},
+    {pat="^[Kk]illing (.+)$",rep="Membunuh %1"},
+    {pat="^[Tt]rading (.+) for (.+)$",rep="Menukar %1 dengan %2"},
+    {pat="^[Tt]rading in (.+)$",rep="Menukarkan %1"},
+    {pat="^[Tt]rading (.+)$",rep="Menukar %1"},
+    {pat="^[Cc]rafting (.+)$",rep="Membuat %1"},
+    {pat="^[Rr]erolling (.+)$",rep="Mengacak ulang %1"},
+    {pat="^[Aa]voiding (.+)$",rep="Menghindari %1"},
+    {pat="^[Ee]vading (.+)$",rep="Menghindar dari %1"},
+    {pat="^[Ff]arming (.+)$",rep="Farm %1"},
+    {pat="^[Uu]sing (.+)$",rep="Menggunakan %1"},
+    {pat="^[Jj]oining (.+)$",rep="Bergabung ke %1"},
+    {pat="^[Hh]opping (.+)$",rep="Pindah %1"},
+    {pat="^[Ww]aiting in (.+)$",rep="Menunggu di %1"},
+    {pat="^[Ww]aiting %((.+)%)$",rep="Menunggu (%1)"},
+    {pat="^[Ss]earching for (.+)$",rep="Mencari %1"},
+    {pat="^[Ll]ooking for (.+)$",rep="Mencari %1"},
+    {pat="^[Cc]ollecting (.+)$",rep="Mengumpulkan %1"},
 }
 local FALLBACK_VERB_PREFIX_ID = {
     ["Carrying "]="Membawa ",["Delivering "]="Mengantarkan ",["Stealing "]="Mencuri ",
@@ -763,6 +874,15 @@ local FALLBACK_VERB_PREFIX_ID = {
     ["Catching "]="Menangkap ",["Waiting "]="Menunggu ",["Claiming "]="Mengklaim ",
     ["Upgrading "]="Meningkatkan ",["Buying "]="Membeli ",["Collecting "]="Mengumpulkan ",
     ["Dropping "]="Menjatuhkan ",["Returning "]="Kembali ",["Avoiding "]="Menghindari ",
+    -- Bổ sung từ VI
+    ["Walking "]="Berjalan ",["Running "]="Berlari ",["Flying "]="Terbang ",
+    ["Chasing "]="Mengejar ",["Searching "]="Mencari ",["Attacking "]="Menyerang ",
+    ["Hitting "]="Memukul ",["Farming "]="Farm ",["Trading "]="Menukar ",
+    ["Crafting "]="Membuat ",["Holding "]="Memegang ",["Ejecting "]="Mengeluarkan ",
+    ["Equipping "]="Memakai ",["Favoriting "]="Memfavoritkan ",["Bringing "]="Membawa ",
+    ["Taking "]="Mengambil ",["Grabbing "]="Meraih ",["Picking "]="Memungut ",
+    ["Capturing "]="Menangkap ",["Evading "]="Menghindar ",["Using "]="Menggunakan ",
+    ["Joining "]="Bergabung ke ",["Hopping "]="Pindah ",
 }
 local DYNAMIC_PATTERNS_ID = {
     {pat="^QUICK BAR (%d+)$",rep="BILAH CEPAT %1"},
@@ -809,6 +929,15 @@ local DYNAMIC_PATTERNS_ID = {
     {pat="(%d+) lab egg%(s%) match",rep="%1 telur Lab cocok filter"},
     {pat="^(%d+) pets$",rep="%1 hewan peliharaan"},
     {pat="(%d+ / %d+) players · (.+)",rep="%1 pemain · %2"},
+    -- Bổ sung từ VI
+    {pat="Experimental Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Eksperimental · butuh %1 · pity %2 · reroll %3 · %4"},
+    {pat="Biohazard Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Biohazard · butuh %1 · pity %2 · reroll %3 · %4"},
+    {pat="Unstable DNA · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="DNA Tidak Stabil · butuh %1 · pity %2 · reroll %3 · %4"},
+    {pat="^Mythic · 1 in ([%d%.]+)$",rep="Mitos · 1 dari %1"},
+    {pat="^Cosmic · 1 in ([%d%.]+)$",rep="Kosmik · 1 dari %1"},
+    {pat="^Secret · 1 in ([%d%.]+)$",rep="Rahasia · 1 dari %1"},
+    {pat="^Divine · 1 in ([%d%.]+)$",rep="Ilahi · 1 dari %1"},
+    {pat="^Eternal · 1 in ([%d%.]+)$",rep="Abadi · 1 dari %1"},
 }
 
 -- ---- PATTERNS VI (merged – FULL base + Beta extras) ----
@@ -944,6 +1073,21 @@ local DYNAMIC_PATTERNS_VI = {
 }
 
 -- ==================== 4. HÀM DỊCH ====================
+-- Reverse lookup: dịch ngược VI/ID → EN để phục hồi OrigRawText khi hub tự đổi ngôn ngữ
+local REVERSE_VI = {}
+local REVERSE_ID = {}
+for k, v in pairs(EXACT_MATCH_VI) do
+    if not REVERSE_VI[v] then REVERSE_VI[v] = k end
+end
+for k, v in pairs(EXACT_MATCH_ID) do
+    if not REVERSE_ID[v] then REVERSE_ID[v] = k end
+end
+
+local function recoverEnglishOriginal(txt)
+    if not txt or txt == "" then return txt end
+    return REVERSE_VI[txt] or REVERSE_ID[txt] or txt
+end
+
 local function translateStatusAction(cleanEn)
     if not cleanEn or cleanEn == "" then
         if currentLanguage == "ID" then return "Menganggur" end
@@ -1057,7 +1201,11 @@ local function applyElementTranslation(inst)
     local rawText = inst.Text
     if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
     local original = inst:GetAttribute("OrigRawText")
-    if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
+    if not original then
+        -- Nếu text đang hiện là bản dịch VI/ID, phục hồi về tiếng Anh gốc
+        original = recoverEnglishOriginal(rawText)
+        inst:SetAttribute("OrigRawText", original)
+    end
     local mapped = translateTLNText(original)
     if inst.Text ~= mapped then
         inst:SetAttribute("__IsTranslating", true)
@@ -1328,6 +1476,13 @@ local function tryPatchTLN()
         if root then
             for _, gui in ipairs(root:GetChildren()) do
                 if gui:IsA("ScreenGui") and gui.Name ~= "RobloxGui" and gui.Name ~= "TopBarApp" then
+                    -- Skip full rescan nếu GUI đã được patch hoàn chỉnh (giảm giật)
+                    local nonHubDone = gui:GetAttribute("__TLNNonHubScanned")
+                    local hubDone    = gui:GetAttribute("__IslandLocked")
+                    if gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone) then
+                        -- DescendantAdded đã lo phần tử mới, không cần rescan toàn bộ
+                        goto __skipGui
+                    end
                     -- Gộp 2 pass thành 1 để tránh GetDescendants() 2 lần
                     local titleLbl = nil
                     local allDesc = gui:GetDescendants()
@@ -1347,7 +1502,12 @@ local function tryPatchTLN()
                         gui:SetAttribute("__TextListenerAttached", true)
                         gui.DescendantAdded:Connect(function(newDesc)
                             if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
-                                task.defer(function() hookTextForTranslation(newDesc) end)
+                                -- delay 0.05s: chờ game set xong text rồi mới dịch
+                                task.delay(0.05, function()
+                                    if newDesc and newDesc.Parent then
+                                        pcall(hookTextForTranslation, newDesc)
+                                    end
+                                end)
                             end
                         end)
                     end
@@ -1419,7 +1579,10 @@ local function tryPatchTLN()
                                 hookTextForTranslation(d)
                             end
                         end
+                        -- Đánh dấu đã scan xong: lần sau bỏ qua, DescendantAdded lo tiếp
+                        gui:SetAttribute("__TLNNonHubScanned", true)
                     end
+                    ::__skipGui::
                 end
             end
         end
@@ -1451,8 +1614,20 @@ task.spawn(function()
     for _ = 1, 30 do
         task.wait(1); pcall(tryPatchTLN)
     end
+    local cleanupTick = 0
     while true do
-        task.wait(7); pcall(tryPatchTLN)
+        task.wait(5); pcall(tryPatchTLN)
+        -- Dọn TrackedTexts mỗi 30s để tránh phình bộ nhớ gây đơ
+        cleanupTick = cleanupTick + 5
+        if cleanupTick >= 30 then
+            cleanupTick = 0
+            for i = #TrackedTexts, 1, -1 do
+                local el = TrackedTexts[i]
+                if not (el and el.Parent) then
+                    table.remove(TrackedTexts, i)
+                end
+            end
+        end
     end
 end)
 
