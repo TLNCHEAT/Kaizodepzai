@@ -1530,7 +1530,8 @@ local function tryPatchTLN()
                     -- Skip full rescan nếu GUI đã được patch hoàn chỉnh (giảm giật)
                     local nonHubDone = gui:GetAttribute("__TLNNonHubScanned")
                     local hubDone    = gui:GetAttribute("__IslandLocked")
-                    local skipScan   = gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone)
+                    local chilliDone = gui:GetAttribute("__ChilliFinderPatched")  -- [LAGFIX] bỏ qua chilli finder sau khi patch xong
+                    local skipScan   = gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone or chilliDone)
                     if not skipScan then
                     -- Gộp 2 pass thành 1 để tránh GetDescendants() 2 lần
                     local titleLbl = nil
@@ -1770,6 +1771,148 @@ task.spawn(function()
             if root then
                 for _, gui in ipairs(root:GetChildren()) do
                     pcall(patchGui, gui)
+                end
+            end
+        end
+    end
+end)
+
+-- ==================== 9. CHILLI FINDER: BYPASS + LAG FIX ====================
+-- [BYPASS] Mở khóa Chilli Finder miễn phí: spoof tài khoản → Pro, xóa thông báo booking
+-- [LAGFIX] Mark GUI → tryPatchTLN bỏ qua GetDescendants() nặng cho chilli finder
+task.spawn(function()
+    local patchedGuis = {}
+
+    -- Nhận ra GUI Chilli Finder qua tên hoặc title label (max scan 30 phần tử)
+    local function isChilliFinderGui(gui)
+        local name = gui.Name:lower()
+        if name:find("chilli") or name:find("finder") then return true end
+        local checked = 0
+        for _, d in ipairs(gui:GetDescendants()) do
+            if d:IsA("TextLabel") or d:IsA("TextButton") then
+                local t = d.Text or ""
+                if t == "Chilli Finder" or t == "Cari Server" or t == "Tìm Server" then
+                    return true
+                end
+            end
+            checked = checked + 1
+            if checked > 30 then break end
+        end
+        return false
+    end
+
+    -- Patch từng element: spoof account, xóa nag, mở khóa nút Join
+    local function patchChilliElement(d)
+        if not (d:IsA("TextLabel") or d:IsA("TextButton")) then return end
+        local t = d.Text or ""
+
+        -- [BYPASS] "No plan" → "Pro"
+        if t == "No plan" or t == "No Plan" or t == "Belum berlangganan"
+        or t == "Chưa có gói" or t == "Chưa đặt lịch" then
+            d.Text = "Pro"
+            if not d:GetAttribute("__CfAccSpoofed") then
+                d:SetAttribute("__CfAccSpoofed", true)
+                d:GetPropertyChangedSignal("Text"):Connect(function()
+                    local cur = d.Text or ""
+                    if cur == "No plan" or cur == "No Plan"
+                    or cur:find("Belum") or cur:find("Chưa")
+                    or cur:find("no plan") then
+                        d.Text = "Pro"
+                    end
+                end)
+            end
+            return
+        end
+
+        -- [BYPASS] Xóa nag "No active booking. Book hours at chillihub.pro"
+        if t:find("No active booking") or t:find("Book hours at")
+        or t:find("chillihub") then
+            d.Text = "✓ Active. Enjoy!"
+            if not d:GetAttribute("__CfBookSpoofed") then
+                d:SetAttribute("__CfBookSpoofed", true)
+                d:GetPropertyChangedSignal("Text"):Connect(function()
+                    local cur = d.Text or ""
+                    if cur:find("No active booking") or cur:find("Book hours at")
+                    or cur:find("chillihub") then
+                        d.Text = "✓ Active. Enjoy!"
+                    end
+                end)
+            end
+            return
+        end
+
+        -- [BYPASS] Nút Join: force active + màu vàng
+        if d:IsA("TextButton")
+        and (t == "Join" or t == "Masuk" or t == "Tham gia") then
+            if not d:GetAttribute("__CfJoinUnlocked") then
+                d:SetAttribute("__CfJoinUnlocked", true)
+                d.Active = true
+                d.AutoButtonColor = true
+                local GOLD = Color3.fromRGB(255, 185, 0)
+                pcall(function()
+                    if d.BackgroundColor3 ~= GOLD then d.BackgroundColor3 = GOLD end
+                end)
+                -- Giữ nút luôn vàng nếu game cố dim/disable
+                d:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+                    if d.BackgroundColor3 ~= GOLD then
+                        pcall(function() d.BackgroundColor3 = GOLD end)
+                    end
+                end)
+                d:GetPropertyChangedSignal("Active"):Connect(function()
+                    if not d.Active then d.Active = true end
+                end)
+            end
+        end
+    end
+
+    -- Full patch + hook cho một GUI cụ thể
+    local function fullPatchChilliGui(gui)
+        if patchedGuis[gui] then return end
+        patchedGuis[gui] = true
+        -- [LAGFIX] Tag để tryPatchTLN bỏ qua scan nặng
+        gui:SetAttribute("__ChilliFinderPatched", true)
+
+        -- [LAGFIX] Batch scan với yield mỗi 40 phần tử → không đóng băng UI
+        local allDesc = gui:GetDescendants()
+        for i = 1, #allDesc do
+            pcall(patchChilliElement, allDesc[i])
+            if i % 40 == 0 then task.wait() end
+        end
+
+        -- [LAGFIX] Debounced DescendantAdded: gom 100ms → xử lý 1 lần thay vì N defer
+        local pendingBatch = {}
+        local batchRunning = false
+        gui.DescendantAdded:Connect(function(newD)
+            pendingBatch[#pendingBatch + 1] = newD
+            if not batchRunning then
+                batchRunning = true
+                task.delay(0.1, function()
+                    local batch = pendingBatch
+                    pendingBatch = {}
+                    batchRunning = false
+                    for _, d in ipairs(batch) do
+                        if d and d.Parent then pcall(patchChilliElement, d) end
+                    end
+                end)
+            end
+        end)
+    end
+
+    -- Vòng phát hiện: kiểm tra GUIs mới mỗi 1.5s
+    while true do
+        task.wait(1.5)
+        for _, root in ipairs(roots) do
+            if root then
+                for _, gui in ipairs(root:GetChildren()) do
+                    if gui:IsA("ScreenGui")
+                    and not patchedGuis[gui]
+                    and not gui:GetAttribute("__IslandLocked") then
+                        task.spawn(function()
+                            if isChilliFinderGui(gui) then
+                                fullPatchChilliGui(gui)
+                            end
+                        end)
+                    end
                 end
             end
         end
