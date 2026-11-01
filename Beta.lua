@@ -100,7 +100,7 @@ if not getgenv().__ChilliV5RainbowLoop then
                     ActiveGradients[#ActiveGradients] = nil
                 end
             end
-            task.wait(0.083)  -- [PERF] 0.05→0.083 = 12fps, mắt không thấy khác, tiết kiệm 40% CPU
+            task.wait(0.15)   -- [LAGFIX] 12fps→6fps border animation, không thấy khác, tiết kiệm thêm CPU
         end
     end)
 end
@@ -1264,7 +1264,7 @@ local function hookTextForTranslation(inst)
     applyElementTranslation(inst)
     if inst:GetAttribute("__TransHooked") then return end
     inst:SetAttribute("__TransHooked", true)
-    table.insert(TrackedTexts, inst)
+    if #TrackedTexts < 400 then table.insert(TrackedTexts, inst) end  -- [LAGFIX] cap 400: chilli finder rows không phình bảng
     inst:GetPropertyChangedSignal("Text"):Connect(function()
         if inst:GetAttribute("__IsTranslating") or inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") then return end
         if isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst); return end
@@ -1283,11 +1283,12 @@ local function refreshAllTranslations()
             applyElementTranslation(el)
             i = i + 1
         else
-            -- [PERF] swap-remove O(1) thay vì table.remove O(n)
             TrackedTexts[i] = TrackedTexts[n]
             TrackedTexts[n] = nil
             n = n - 1
         end
+        -- [LAGFIX] yield mỗi 50 phần tử: không block frame dù TrackedTexts lớn
+        if i % 50 == 0 then task.wait() end
     end
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
@@ -1552,12 +1553,19 @@ local function tryPatchTLN()
                         gui:SetAttribute("__TextListenerAttached", true)
                         gui.DescendantAdded:Connect(function(newDesc)
                             if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
-                                -- delay 0.05s: chờ game set xong text rồi mới dịch
-                                task.delay(0.05, function()
-                                    if newDesc and newDesc.Parent then
-                                        pcall(hookTextForTranslation, newDesc)
-                                    end
-                                end)
+                                if gui:GetAttribute("__ChilliFinderPatched") then
+                                    -- [LAGFIX] GUI cao tần: defer+apply, KHÔNG thêm TrackedTexts, không tạo delay riêng
+                                    task.defer(function()
+                                        if newDesc and newDesc.Parent then pcall(applyElementTranslation, newDesc) end
+                                    end)
+                                else
+                                    -- delay 0.05s: chờ game set xong text rồi mới dịch
+                                    task.delay(0.05, function()
+                                        if newDesc and newDesc.Parent then
+                                            pcall(hookTextForTranslation, newDesc)
+                                        end
+                                    end)
+                                end
                             end
                         end)
                     end
@@ -1623,10 +1631,28 @@ local function tryPatchTLN()
                             end
                         end
                     else
+                        -- [LAGFIX] Nhận dạng chilli finder TRƯỚC khi scan: tránh thêm rows vào TrackedTexts
+                        local isHighFreqGui = false
+                        for _, d in ipairs(allDesc) do
+                            if d:IsA("TextLabel") or d:IsA("TextButton") then
+                                local t = d.Text or ""
+                                if t == "Chilli Finder" or t == "Cari Server" or t == "Tìm Server" then
+                                    isHighFreqGui = true; break
+                                end
+                            end
+                        end
+                        if isHighFreqGui then
+                            gui:SetAttribute("__ChilliFinderPatched", true)
+                        end
                         -- ScreenGui không phải hub (Steal Panel, Chilli Finder...): dịch text trực tiếp
                         for _, d in ipairs(allDesc) do
                             if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-                                hookTextForTranslation(d)
+                                if isHighFreqGui then
+                                    -- [LAGFIX] GUI cao tần: apply 1 lần, KHÔNG track → TrackedTexts không phình
+                                    pcall(applyElementTranslation, d)
+                                else
+                                    hookTextForTranslation(d)
+                                end
                             end
                         end
                         -- Đánh dấu đã scan xong: lần sau bỏ qua, DescendantAdded lo tiếp
