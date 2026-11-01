@@ -8,6 +8,48 @@ local CHILLI_LOGO_ID  = "rbxassetid://100224396235670"
 local LOGO_BG_COLOR   = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
+-- ==================== 0. HTTP HOOK SỚM (chạy đồng bộ trước khi VenyxHub load) ====================
+-- [FIX] Phải hook TRƯỚC task.spawn VenyxHub để spoof plan Chilli Finder kịp lúc
+local function spoofJsonEarly(s)
+    if type(s) ~= "string" then return s end
+    s = s:gsub('"plan"%s*:%s*null',           '"plan":"pro"')
+    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',    '"plan":"pro"')
+    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',    '"tier":"pro"')
+    s = s:gsub('"has_booking"%s*:%s*false',    '"has_booking":true')
+    s = s:gsub('"booking_active"%s*:%s*false', '"booking_active":true')
+    s = s:gsub('"active"%s*:%s*false',         '"active":true')
+    s = s:gsub('"is_active"%s*:%s*false',      '"is_active":true')
+    s = s:gsub('"authorized"%s*:%s*false',     '"authorized":true')
+    s = s:gsub('"has_access"%s*:%s*false',     '"has_access":true')
+    return s
+end
+pcall(function()
+    local _origHG = game.HttpGet
+    game.HttpGet = function(self, url, ...)
+        local ok, res = pcall(_origHG, self, url, ...)
+        if not ok then return "" end
+        if type(url) == "string" and url:find("chillihub") then
+            return spoofJsonEarly(res)
+        end
+        return res
+    end
+end)
+pcall(function()
+    local _HS      = game:GetService("HttpService")
+    local _origReq = _HS.RequestAsync
+    _HS.RequestAsync = function(self, opts, ...)
+        local ok, res = pcall(_origReq, self, opts, ...)
+        if ok and type(res) == "table" then
+            local url = (type(opts) == "table" and opts.Url) or ""
+            if url:find("chillihub") then
+                res.Body = spoofJsonEarly(res.Body or "")
+            end
+            return res
+        end
+        return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+    end
+end)
+
 -- ==================== 1. LOAD VENYXHUB ====================
 -- [FIX] Reset guard mỗi lần inject lại để hub luôn được load mới
 getgenv().__TLNV5NewLoaded = nil
@@ -1275,20 +1317,25 @@ local function hookTextForTranslation(inst)
 end
 
 local function refreshAllTranslations()
+    -- [LAGFIX] Dùng task.defer thay task.wait: không gây giật frame khi đổi ngôn ngữ
     local n = #TrackedTexts
     local i = 1
     while i <= n do
         local el = TrackedTexts[i]
         if el and el.Parent then
-            applyElementTranslation(el)
+            -- Defer từng phần tử: spread work ra nhiều frame không block
+            local _el = el
+            task.defer(function()
+                if _el and _el.Parent then
+                    pcall(applyElementTranslation, _el)
+                end
+            end)
             i = i + 1
         else
             TrackedTexts[i] = TrackedTexts[n]
             TrackedTexts[n] = nil
             n = n - 1
         end
-        -- [LAGFIX] yield mỗi 50 phần tử: không block frame dù TrackedTexts lớn
-        if i % 50 == 0 then task.wait() end
     end
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
@@ -1606,14 +1653,14 @@ local function tryPatchTLN()
                             if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
                                 local txt = desc.Text or ""; local origTxt = desc:GetAttribute("OrigRawText") or ""
                                 local isAlreadyMovedIdle = desc:GetAttribute("__IslandDone")
-                                local isStatusKeyword = txt == "" or txt:lower():find("idle") or txt:lower():find("waiting") or txt:lower():find("nothing") or origTxt:lower():find("idle") or txt == "Đang rảnh" or txt == "Menganggur"
+                                -- [FIX] Bỏ isStatusKeyword: nhận diện bằng vị trí thay vì nội dung text
+                                -- Chilli Finder status label có thể hiện bất kỳ trạng thái nào (Hopping, Rejoining,...)
                                 local isHeaderIdle = (not gui:GetAttribute("__IslandLocked"))
                                     and (not desc:FindFirstAncestorOfClass("ScrollingFrame"))
                                     and desc.Parent
                                     and (not titleLbl:IsDescendantOf(desc.Parent))
                                     and math.abs(desc.AbsolutePosition.Y - headerY) < 35
                                     and desc.AbsolutePosition.X > titleLbl.AbsolutePosition.X + 60
-                                    and isStatusKeyword
                                 if isHeaderIdle or isAlreadyMovedIdle then
                                     gui:SetAttribute("__IslandLocked", true)
                                     setupDynamicIslandFromStatus(desc, gui)
@@ -1807,50 +1854,9 @@ end)
 -- ==================== 9. CHILLI FINDER: BYPASS + LAG FIX ====================
 task.spawn(function()
 
-    -- ── A. HOOK HTTP: spoof chillihub.pro → plan Pro active ──────────────────
-    -- Chilli Hub gọi HttpGet / HttpService để check plan trước khi cho Join.
-    -- Hook trả về JSON đã patch "active" trước khi Chilli Hub đọc.
-    local function spoofJson(s)
-        if type(s) ~= "string" then return s end
-        s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro"')
-        s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro"')
-        s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro"')
-        s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
-        s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
-        s = s:gsub('"active"%s*:%s*false',            '"active":true')
-        s = s:gsub('"is_active"%s*:%s*false',         '"is_active":true')
-        s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
-        s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
-        return s
-    end
-
-    pcall(function()
-        local origHG = game.HttpGet
-        game.HttpGet = function(self, url, ...)
-            local ok, res = pcall(origHG, self, url, ...)
-            if not ok then return "" end
-            if type(url) == "string" and url:find("chillihub") then
-                return spoofJson(res)
-            end
-            return res
-        end
-    end)
-
-    pcall(function()
-        local HS = game:GetService("HttpService")
-        local origReq = HS.RequestAsync
-        HS.RequestAsync = function(self, opts, ...)
-            local ok, res = pcall(origReq, self, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and opts.Url) or ""
-                if url:find("chillihub") then
-                    res.Body = spoofJson(res.Body or "")
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end)
+    -- ── A. HTTP HOOK đã chạy đồng bộ ở đầu file (section 0) ──────────────────
+    -- [FIX] Không re-hook ở đây nữa để tránh double-wrap và race condition
+    -- spoofJsonEarly đã patch HttpGet + RequestAsync trước khi VenyxHub load
 
     -- ── B. FIND JOB ID trong frame hierarchy khi nút Join được click ──────────
     local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
@@ -1861,29 +1867,47 @@ task.spawn(function()
 
     local function findJobId(btn)
         local obj = btn
-        for _ = 1, 5 do
-            -- check attributes trên object hiện tại
+        for _ = 1, 8 do
+            if not obj or obj:IsA("ScreenGui") then break end
+            -- 1) check known attribute keys
             for _, k in ipairs(ATTR_KEYS) do
                 local v = obj:GetAttribute(k)
                 if type(v) == "string" and v:match(UUID_PAT) then return v end
             end
-            -- check Name của frame
+            -- 2) [FIX] scan ALL attributes của object (key bất kỳ)
+            local ok, allAttrs = pcall(function() return obj:GetAttributes() end)
+            if ok and type(allAttrs) == "table" then
+                for _, v in pairs(allAttrs) do
+                    if type(v) == "string" and v:match(UUID_PAT) then return v end
+                end
+            end
+            -- 3) check Name của frame
             if type(obj.Name) == "string" and obj.Name:match(UUID_PAT) then
                 return obj.Name
             end
-            -- check con của obj: StringValue hoặc TextLabel ẩn chứa UUID
+            -- 4) check con và cháu (depth 2): StringValue, TextLabel ẩn, ObjectValue
             for _, child in ipairs(obj:GetChildren()) do
                 if child:IsA("StringValue") then
                     local v = child.Value or ""
                     if v:match(UUID_PAT) then return v end
                 end
-                if child:IsA("TextLabel") and not child.Visible then
+                if child:IsA("TextLabel") or child:IsA("TextButton") then
                     local v = child.Text or ""
                     if v:match(UUID_PAT) then return v end
+                    -- hidden label
+                    if not child.Visible then
+                        if v:match(UUID_PAT) then return v end
+                    end
+                end
+                -- grandchildren StringValue
+                for _, gc in ipairs(child:GetChildren()) do
+                    if gc:IsA("StringValue") then
+                        local v = gc.Value or ""
+                        if v:match(UUID_PAT) then return v end
+                    end
                 end
             end
             obj = obj.Parent
-            if not obj or obj:IsA("ScreenGui") then break end
         end
         return nil
     end
@@ -1899,11 +1923,13 @@ task.spawn(function()
         for _, d in ipairs(gui:GetDescendants()) do
             if d:IsA("TextLabel") or d:IsA("TextButton") then
                 local t = d.Text or ""
-                if t == "Chilli Finder" or t == "Cari Server" or t == "Tìm Server" then
+                -- [FIX] nhận thêm bản dịch VI/ID
+                if t == "Chilli Finder" or t == "Cari Server"
+                or t == "Tìm Server" or t == "Tìm Máy Chủ" then
                     return true
                 end
             end
-            n = n + 1; if n > 30 then break end
+            n = n + 1; if n > 50 then break end
         end
         return false
     end
@@ -1983,11 +2009,15 @@ task.spawn(function()
         patchedGuis[gui] = true
         gui:SetAttribute("__ChilliFinderPatched", true)
 
-        -- Batch scan với yield mỗi 40 phần tử
+        -- [LAGFIX] Dùng task.defer thay task.wait: không block frame, UI vẫn mượt
         local allDesc = gui:GetDescendants()
         for i = 1, #allDesc do
-            pcall(patchChilliElement, allDesc[i])
-            if i % 40 == 0 then task.wait() end
+            local d = allDesc[i]
+            if d and d.Parent then
+                task.defer(function()
+                    if d and d.Parent then pcall(patchChilliElement, d) end
+                end)
+            end
         end
 
         -- Debounced DescendantAdded: gom 100ms
