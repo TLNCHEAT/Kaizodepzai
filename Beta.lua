@@ -12,15 +12,28 @@ local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 -- [FIX] Phải hook TRƯỚC task.spawn VenyxHub để spoof plan Chilli Finder kịp lúc
 local function spoofJsonEarly(s)
     if type(s) ~= "string" then return s end
-    s = s:gsub('"plan"%s*:%s*null',           '"plan":"pro"')
-    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',    '"plan":"pro"')
-    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',    '"tier":"pro"')
-    s = s:gsub('"has_booking"%s*:%s*false',    '"has_booking":true')
-    s = s:gsub('"booking_active"%s*:%s*false', '"booking_active":true')
-    s = s:gsub('"active"%s*:%s*false',         '"active":true')
-    s = s:gsub('"is_active"%s*:%s*false',      '"is_active":true')
-    s = s:gsub('"authorized"%s*:%s*false',     '"authorized":true')
-    s = s:gsub('"has_access"%s*:%s*false',     '"has_access":true')
+    -- Plan / tier
+    s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro"')
+    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro"')
+    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro"')
+    -- Booking / active
+    s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
+    s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
+    s = s:gsub('"active"%s*:%s*false',            '"active":true')
+    s = s:gsub('"is_active"%s*:%s*false',         '"is_active":true')
+    -- Auth / access
+    s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
+    s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
+    -- [FIX] Login / session fields (Chilli Finder OAuth check)
+    s = s:gsub('"logged_in"%s*:%s*false',         '"logged_in":true')
+    s = s:gsub('"authenticated"%s*:%s*false',     '"authenticated":true')
+    s = s:gsub('"is_authenticated"%s*:%s*false',  '"is_authenticated":true')
+    s = s:gsub('"session_valid"%s*:%s*false',     '"session_valid":true')
+    s = s:gsub('"token_valid"%s*:%s*false',       '"token_valid":true')
+    s = s:gsub('"is_member"%s*:%s*false',         '"is_member":true')
+    s = s:gsub('"verified"%s*:%s*false',          '"verified":true')
+    -- user null → fake object để CF không crash khi đọc user.id
+    s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro"}')
     return s
 end
 pcall(function()
@@ -32,6 +45,42 @@ pcall(function()
             return spoofJsonEarly(res)
         end
         return res
+    end
+end)
+-- [FIX] Hook executor-level request() (Synapse / KRNL / Delta / Wave)
+-- game:HttpGet dùng Roblox built-in; một số Chilli Finder module gọi thẳng request()
+pcall(function()
+    if type(request) == "function" then
+        local _origReqFn = request
+        request = function(opts, ...)
+            local ok, res = pcall(_origReqFn, opts, ...)
+            if ok and type(res) == "table" then
+                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
+                if type(url) == "string" and url:find("chillihub") then
+                    if type(res.Body) == "string" then res.Body = spoofJsonEarly(res.Body) end
+                    if type(res.body) == "string" then res.body = spoofJsonEarly(res.body) end
+                end
+                return res
+            end
+            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+        end
+    end
+end)
+-- [FIX] syn.request / http.request fallback
+pcall(function()
+    if syn and type(syn.request) == "function" then
+        local _s = syn.request
+        syn.request = function(opts, ...)
+            local ok, res = pcall(_s, opts, ...)
+            if ok and type(res) == "table" then
+                local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
+                if type(url) == "string" and url:find("chillihub") then
+                    if type(res.Body) == "string" then res.Body = spoofJsonEarly(res.Body) end
+                end
+                return res
+            end
+            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+        end
     end
 end)
 pcall(function()
@@ -1311,7 +1360,11 @@ local function hookTextForTranslation(inst)
         if inst:GetAttribute("__IsTranslating") or inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") then return end
         if isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst); return end
         if inst.Text ~= inst:GetAttribute("__LastTranslated") then
-            inst:SetAttribute("OrigRawText", inst.Text); applyElementTranslation(inst)
+            -- [FIX] Phục hồi EN gốc trước khi lưu, tránh OrigRawText bị nhiễm bản dịch VI/ID
+            -- VenyxHub có thể ghi text bằng bản dịch của nó → không được dùng làm nguồn
+            local recovered = recoverEnglishOriginal(inst.Text)
+            inst:SetAttribute("OrigRawText", recovered)
+            applyElementTranslation(inst)
         end
     end)
 end
@@ -1601,8 +1654,9 @@ local function tryPatchTLN()
                         gui.DescendantAdded:Connect(function(newDesc)
                             if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
                                 if gui:GetAttribute("__ChilliFinderPatched") then
-                                    -- [LAGFIX] GUI cao tần: defer+apply, KHÔNG thêm TrackedTexts, không tạo delay riêng
-                                    task.defer(function()
+                                    -- [FIX] delay 0.3s: cho VenyxHub set text xong trước khi dịch
+                                    -- task.defer quá nhanh → VenyxHub ghi đè ngay sau
+                                    task.delay(0.3, function()
                                         if newDesc and newDesc.Parent then pcall(applyElementTranslation, newDesc) end
                                     end)
                                 else
@@ -1678,12 +1732,13 @@ local function tryPatchTLN()
                             end
                         end
                     else
-                        -- [LAGFIX] Nhận dạng chilli finder TRƯỚC khi scan: tránh thêm rows vào TrackedTexts
+                        -- Nhận dạng Chilli Finder
                         local isHighFreqGui = false
                         for _, d in ipairs(allDesc) do
                             if d:IsA("TextLabel") or d:IsA("TextButton") then
                                 local t = d.Text or ""
-                                if t == "Chilli Finder" or t == "Cari Server" or t == "Tìm Server" then
+                                if t == "Chilli Finder" or t == "Cari Server"
+                                or t == "Tìm Máy Chủ" or t == "Tìm Server" then
                                     isHighFreqGui = true; break
                                 end
                             end
@@ -1691,13 +1746,18 @@ local function tryPatchTLN()
                         if isHighFreqGui then
                             gui:SetAttribute("__ChilliFinderPatched", true)
                         end
-                        -- ScreenGui không phải hub (Steal Panel, Chilli Finder...): dịch text trực tiếp
+                        -- [FIX] Dùng hookTextForTranslation cho MỌI element (kể cả Chilli Finder)
+                        -- để Text:Changed hook được gắn → VenyxHub không ghi đè được bản dịch
+                        -- Chỉ skip rows trong ScrollingFrame (dynamic, update liên tục) → dùng apply
                         for _, d in ipairs(allDesc) do
                             if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-                                if isHighFreqGui then
-                                    -- [LAGFIX] GUI cao tần: apply 1 lần, KHÔNG track → TrackedTexts không phình
-                                    pcall(applyElementTranslation, d)
+                                if isHighFreqGui and d:FindFirstAncestorOfClass("ScrollingFrame") then
+                                    -- Row động: chỉ apply 1 lần, DescendantAdded+delay lo phần còn lại
+                                    task.defer(function()
+                                        if d and d.Parent then pcall(applyElementTranslation, d) end
+                                    end)
                                 else
+                                    -- Header/nút tĩnh: hook đầy đủ để bền vững
                                     hookTextForTranslation(d)
                                 end
                             end
@@ -1865,49 +1925,78 @@ task.spawn(function()
         "PlaceJobId","instanceId","InstanceId","ServerJobId","serverJobId",
     }
 
+    -- Cache GUI → descendant list để không GetDescendants() lặp lại
+    local _guiDescCache = {}
+
     local function findJobId(btn)
+        -- 1) Walk parent chain trước (nhanh nhất)
         local obj = btn
         for _ = 1, 8 do
             if not obj or obj:IsA("ScreenGui") then break end
-            -- 1) check known attribute keys
+            -- check known attribute keys
             for _, k in ipairs(ATTR_KEYS) do
                 local v = obj:GetAttribute(k)
                 if type(v) == "string" and v:match(UUID_PAT) then return v end
             end
-            -- 2) [FIX] scan ALL attributes của object (key bất kỳ)
-            local ok, allAttrs = pcall(function() return obj:GetAttributes() end)
-            if ok and type(allAttrs) == "table" then
+            -- scan ALL attributes
+            local ok2, allAttrs = pcall(function() return obj:GetAttributes() end)
+            if ok2 and type(allAttrs) == "table" then
                 for _, v in pairs(allAttrs) do
                     if type(v) == "string" and v:match(UUID_PAT) then return v end
                 end
             end
-            -- 3) check Name của frame
-            if type(obj.Name) == "string" and obj.Name:match(UUID_PAT) then
-                return obj.Name
-            end
-            -- 4) check con và cháu (depth 2): StringValue, TextLabel ẩn, ObjectValue
+            -- Name của frame
+            if type(obj.Name) == "string" and obj.Name:match(UUID_PAT) then return obj.Name end
+            -- StringValue / TextLabel / TextButton trực tiếp trong obj
             for _, child in ipairs(obj:GetChildren()) do
                 if child:IsA("StringValue") then
-                    local v = child.Value or ""
-                    if v:match(UUID_PAT) then return v end
-                end
-                if child:IsA("TextLabel") or child:IsA("TextButton") then
+                    if (child.Value or ""):match(UUID_PAT) then return child.Value end
+                elseif child:IsA("TextLabel") or child:IsA("TextButton") then
                     local v = child.Text or ""
                     if v:match(UUID_PAT) then return v end
-                    -- hidden label
-                    if not child.Visible then
-                        if v:match(UUID_PAT) then return v end
-                    end
                 end
-                -- grandchildren StringValue
                 for _, gc in ipairs(child:GetChildren()) do
-                    if gc:IsA("StringValue") then
-                        local v = gc.Value or ""
-                        if v:match(UUID_PAT) then return v end
-                    end
+                    if gc:IsA("StringValue") and (gc.Value or ""):match(UUID_PAT) then return gc.Value end
                 end
             end
             obj = obj.Parent
+        end
+
+        -- 2) [FIX] Fallback: scan TOÀN BỘ Chilli Finder GUI
+        -- JobId có thể lưu ở bất cứ đâu trong cây (ModuleScript output, hidden frame, ...)
+        local guiRoot = btn
+        while guiRoot.Parent and not guiRoot.Parent:IsA("ScreenGui") do
+            guiRoot = guiRoot.Parent
+        end
+        if guiRoot:IsA("ScreenGui") then guiRoot = btn end
+        -- dùng ScreenGui làm root
+        local screenRoot = guiRoot
+        while screenRoot and not screenRoot:IsA("ScreenGui") do
+            screenRoot = screenRoot.Parent
+        end
+        if screenRoot and screenRoot:IsA("ScreenGui") then
+            if not _guiDescCache[screenRoot] or tick() - (_guiDescCache[screenRoot]._t or 0) > 3 then
+                _guiDescCache[screenRoot] = {list=screenRoot:GetDescendants(), _t=tick()}
+            end
+            for _, d in ipairs(_guiDescCache[screenRoot].list) do
+                if d and d.Parent then
+                    -- check attributes
+                    local ok3, attrs = pcall(function() return d:GetAttributes() end)
+                    if ok3 then
+                        for _, v in pairs(attrs) do
+                            if type(v) == "string" and v:match(UUID_PAT) then return v end
+                        end
+                    end
+                    -- check Name
+                    if type(d.Name) == "string" and d.Name:match(UUID_PAT) then return d.Name end
+                    -- check StringValue
+                    if d:IsA("StringValue") and (d.Value or ""):match(UUID_PAT) then return d.Value end
+                    -- check hidden text
+                    if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d.Visible then
+                        if (d.Text or ""):match(UUID_PAT) then return d.Text end
+                    end
+                end
+            end
         end
         return nil
     end
@@ -1938,33 +2027,38 @@ task.spawn(function()
         if not (d:IsA("TextLabel") or d:IsA("TextButton")) then return end
         local t = d.Text or ""
 
-        -- Spoof "No plan" → "Pro"
-        if t == "No plan" or t == "No Plan"
-        or t:find("Belum berlangganan") or (t:find("Chưa") and t:find("gói")) then
+        -- Spoof "No plan" → "Pro" (bắt cả bản gốc và bản dịch VI/ID)
+        local function isNoPlan(s)
+            return s == "No plan" or s == "No Plan"
+            or s:find("Belum berlangganan")   -- ID
+            or s == "Chưa đăng ký"            -- VI exact
+            or (s:find("Chưa") and (s:find("đăng") or s:find("gói")))  -- VI fuzzy
+        end
+        if isNoPlan(t) then
             d.Text = "Pro"
             if not d:GetAttribute("__CfAccSpoofed") then
                 d:SetAttribute("__CfAccSpoofed", true)
                 d:GetPropertyChangedSignal("Text"):Connect(function()
                     local c = d.Text or ""
-                    if c == "No plan" or c == "No Plan"
-                    or c:find("Belum") or (c:find("Chưa") and c:find("gói")) then
-                        d.Text = "Pro"
-                    end
+                    if isNoPlan(c) then d.Text = "Pro" end
                 end)
             end
             return
         end
 
-        -- Xóa nag booking
-        if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub") then
+        -- Xóa nag booking (bắt cả bản gốc và bản dịch VI/ID)
+        local function isBookingNag(s)
+            return s:find("No active booking") or s:find("Book hours at") or s:find("chillihub")
+            or s:find("lịch đặt")   -- VI: "chưa có lịch đặt"
+            or s:find("pemesanan")  -- ID: "belum ada pemesanan"
+        end
+        if isBookingNag(t) then
             d.Text = "✓ Active. Enjoy!"
             if not d:GetAttribute("__CfBookSpoofed") then
                 d:SetAttribute("__CfBookSpoofed", true)
                 d:GetPropertyChangedSignal("Text"):Connect(function()
                     local c = d.Text or ""
-                    if c:find("No active booking") or c:find("Book hours at") or c:find("chillihub") then
-                        d.Text = "✓ Active. Enjoy!"
-                    end
+                    if isBookingNag(c) then d.Text = "✓ Active. Enjoy!" end
                 end)
             end
             return
@@ -1972,7 +2066,7 @@ task.spawn(function()
 
         -- Nút Join: unlock visual + handler teleport trực tiếp
         if d:IsA("TextButton")
-        and (t == "Join" or t == "Masuk" or t == "Tham gia") then
+        and (t == "Join" or t == "Masuk" or t == "Vào" or t == "Tham gia") then
             if not d:GetAttribute("__CfJoinUnlocked") then
                 d:SetAttribute("__CfJoinUnlocked", true)
                 d.Active          = true
