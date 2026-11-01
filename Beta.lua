@@ -1803,17 +1803,99 @@ task.spawn(function()
     end
 end)
 
--- ==================== 9. CHILLI FINDER: BYPASS + LAG FIX ====================
--- [BYPASS] Mở khóa Chilli Finder miễn phí: spoof tài khoản → Pro, xóa thông báo booking
--- [LAGFIX] Mark GUI → tryPatchTLN bỏ qua GetDescendants() nặng cho chilli finder
-task.spawn(function()
-    local patchedGuis = {}
 
-    -- Nhận ra GUI Chilli Finder qua tên hoặc title label (max scan 30 phần tử)
+-- ==================== 9. CHILLI FINDER: BYPASS + LAG FIX ====================
+task.spawn(function()
+
+    -- ── A. HOOK HTTP: spoof chillihub.pro → plan Pro active ──────────────────
+    -- Chilli Hub gọi HttpGet / HttpService để check plan trước khi cho Join.
+    -- Hook trả về JSON đã patch "active" trước khi Chilli Hub đọc.
+    local function spoofJson(s)
+        if type(s) ~= "string" then return s end
+        s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro"')
+        s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro"')
+        s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro"')
+        s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
+        s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
+        s = s:gsub('"active"%s*:%s*false',            '"active":true')
+        s = s:gsub('"is_active"%s*:%s*false',         '"is_active":true')
+        s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
+        s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
+        return s
+    end
+
+    pcall(function()
+        local origHG = game.HttpGet
+        game.HttpGet = function(self, url, ...)
+            local ok, res = pcall(origHG, self, url, ...)
+            if not ok then return "" end
+            if type(url) == "string" and url:find("chillihub") then
+                return spoofJson(res)
+            end
+            return res
+        end
+    end)
+
+    pcall(function()
+        local HS = game:GetService("HttpService")
+        local origReq = HS.RequestAsync
+        HS.RequestAsync = function(self, opts, ...)
+            local ok, res = pcall(origReq, self, opts, ...)
+            if ok and type(res) == "table" then
+                local url = (type(opts) == "table" and opts.Url) or ""
+                if url:find("chillihub") then
+                    res.Body = spoofJson(res.Body or "")
+                end
+                return res
+            end
+            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+        end
+    end)
+
+    -- ── B. FIND JOB ID trong frame hierarchy khi nút Join được click ──────────
+    local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+    local ATTR_KEYS = {
+        "JobId","jobId","job_id","ServerId","serverId","server_id",
+        "PlaceJobId","instanceId","InstanceId","ServerJobId","serverJobId",
+    }
+
+    local function findJobId(btn)
+        local obj = btn
+        for _ = 1, 5 do
+            -- check attributes trên object hiện tại
+            for _, k in ipairs(ATTR_KEYS) do
+                local v = obj:GetAttribute(k)
+                if type(v) == "string" and v:match(UUID_PAT) then return v end
+            end
+            -- check Name của frame
+            if type(obj.Name) == "string" and obj.Name:match(UUID_PAT) then
+                return obj.Name
+            end
+            -- check con của obj: StringValue hoặc TextLabel ẩn chứa UUID
+            for _, child in ipairs(obj:GetChildren()) do
+                if child:IsA("StringValue") then
+                    local v = child.Value or ""
+                    if v:match(UUID_PAT) then return v end
+                end
+                if child:IsA("TextLabel") and not child.Visible then
+                    local v = child.Text or ""
+                    if v:match(UUID_PAT) then return v end
+                end
+            end
+            obj = obj.Parent
+            if not obj or obj:IsA("ScreenGui") then break end
+        end
+        return nil
+    end
+
+    -- ── C. PATCH GUI ELEMENTS ─────────────────────────────────────────────────
+    local TeleportService = game:GetService("TeleportService")
+    local patchedGuis     = {}
+
     local function isChilliFinderGui(gui)
         local name = gui.Name:lower()
         if name:find("chilli") or name:find("finder") then return true end
-        local checked = 0
+        local n = 0
         for _, d in ipairs(gui:GetDescendants()) do
             if d:IsA("TextLabel") or d:IsA("TextButton") then
                 local t = d.Text or ""
@@ -1821,28 +1903,25 @@ task.spawn(function()
                     return true
                 end
             end
-            checked = checked + 1
-            if checked > 30 then break end
+            n = n + 1; if n > 30 then break end
         end
         return false
     end
 
-    -- Patch từng element: spoof account, xóa nag, mở khóa nút Join
     local function patchChilliElement(d)
         if not (d:IsA("TextLabel") or d:IsA("TextButton")) then return end
         local t = d.Text or ""
 
-        -- [BYPASS] "No plan" → "Pro"
-        if t == "No plan" or t == "No Plan" or t == "Belum berlangganan"
-        or t == "Chưa có gói" or t == "Chưa đặt lịch" then
+        -- Spoof "No plan" → "Pro"
+        if t == "No plan" or t == "No Plan"
+        or t:find("Belum berlangganan") or (t:find("Chưa") and t:find("gói")) then
             d.Text = "Pro"
             if not d:GetAttribute("__CfAccSpoofed") then
                 d:SetAttribute("__CfAccSpoofed", true)
                 d:GetPropertyChangedSignal("Text"):Connect(function()
-                    local cur = d.Text or ""
-                    if cur == "No plan" or cur == "No Plan"
-                    or cur:find("Belum") or cur:find("Chưa")
-                    or cur:find("no plan") then
+                    local c = d.Text or ""
+                    if c == "No plan" or c == "No Plan"
+                    or c:find("Belum") or (c:find("Chưa") and c:find("gói")) then
                         d.Text = "Pro"
                     end
                 end)
@@ -1850,16 +1929,14 @@ task.spawn(function()
             return
         end
 
-        -- [BYPASS] Xóa nag "No active booking. Book hours at chillihub.pro"
-        if t:find("No active booking") or t:find("Book hours at")
-        or t:find("chillihub") then
+        -- Xóa nag booking
+        if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub") then
             d.Text = "✓ Active. Enjoy!"
             if not d:GetAttribute("__CfBookSpoofed") then
                 d:SetAttribute("__CfBookSpoofed", true)
                 d:GetPropertyChangedSignal("Text"):Connect(function()
-                    local cur = d.Text or ""
-                    if cur:find("No active booking") or cur:find("Book hours at")
-                    or cur:find("chillihub") then
+                    local c = d.Text or ""
+                    if c:find("No active booking") or c:find("Book hours at") or c:find("chillihub") then
                         d.Text = "✓ Active. Enjoy!"
                     end
                 end)
@@ -1867,18 +1944,17 @@ task.spawn(function()
             return
         end
 
-        -- [BYPASS] Nút Join: force active + màu vàng
+        -- Nút Join: unlock visual + handler teleport trực tiếp
         if d:IsA("TextButton")
         and (t == "Join" or t == "Masuk" or t == "Tham gia") then
             if not d:GetAttribute("__CfJoinUnlocked") then
                 d:SetAttribute("__CfJoinUnlocked", true)
-                d.Active = true
+                d.Active          = true
                 d.AutoButtonColor = true
                 local GOLD = Color3.fromRGB(255, 185, 0)
                 pcall(function()
                     if d.BackgroundColor3 ~= GOLD then d.BackgroundColor3 = GOLD end
                 end)
-                -- Giữ nút luôn vàng nếu game cố dim/disable
                 d:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
                     if d.BackgroundColor3 ~= GOLD then
                         pcall(function() d.BackgroundColor3 = GOLD end)
@@ -1887,33 +1963,41 @@ task.spawn(function()
                 d:GetPropertyChangedSignal("Active"):Connect(function()
                     if not d.Active then d.Active = true end
                 end)
+                -- Handler riêng: tìm JobId rồi teleport, bypass plan check
+                d.MouseButton1Click:Connect(function()
+                    local jobId = findJobId(d)
+                    if jobId then
+                        pcall(function()
+                            TeleportService:TeleportToPlaceInstance(
+                                game.PlaceId, jobId, Players.LocalPlayer
+                            )
+                        end)
+                    end
+                end)
             end
         end
     end
 
-    -- Full patch + hook cho một GUI cụ thể
     local function fullPatchChilliGui(gui)
         if patchedGuis[gui] then return end
         patchedGuis[gui] = true
-        -- [LAGFIX] Tag để tryPatchTLN bỏ qua scan nặng
         gui:SetAttribute("__ChilliFinderPatched", true)
 
-        -- [LAGFIX] Batch scan với yield mỗi 40 phần tử → không đóng băng UI
+        -- Batch scan với yield mỗi 40 phần tử
         local allDesc = gui:GetDescendants()
         for i = 1, #allDesc do
             pcall(patchChilliElement, allDesc[i])
             if i % 40 == 0 then task.wait() end
         end
 
-        -- [LAGFIX] Debounced DescendantAdded: gom 100ms → xử lý 1 lần thay vì N defer
-        local pendingBatch = {}
-        local batchRunning = false
+        -- Debounced DescendantAdded: gom 100ms
+        local pendingBatch, batchRunning = {}, false
         gui.DescendantAdded:Connect(function(newD)
             pendingBatch[#pendingBatch + 1] = newD
             if not batchRunning then
                 batchRunning = true
                 task.delay(0.1, function()
-                    local batch = pendingBatch
+                    local batch  = pendingBatch
                     pendingBatch = {}
                     batchRunning = false
                     for _, d in ipairs(batch) do
@@ -1924,7 +2008,7 @@ task.spawn(function()
         end)
     end
 
-    -- Vòng phát hiện: kiểm tra GUIs mới mỗi 1.5s
+    -- Vòng phát hiện GUI mới mỗi 1.5s
     while true do
         task.wait(1.5)
         for _, root in ipairs(roots) do
