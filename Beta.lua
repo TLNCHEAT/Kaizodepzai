@@ -13,9 +13,9 @@ local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 local function spoofJsonEarly(s)
     if type(s) ~= "string" then return s end
     -- Plan / tier
-    s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro"')
-    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro"')
-    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro"')
+    s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro_max"')
+    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro_max"')
+    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro_max"')
     -- Booking / active
     s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
     s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
@@ -24,6 +24,15 @@ local function spoofJsonEarly(s)
     -- Auth / access
     s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
     s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
+    -- [FIX] Extra CF plan check fields
+    s = s:gsub('"is_premium"%s*:%s*false',        '"is_premium":true')
+    s = s:gsub('"premium"%s*:%s*false',           '"premium":true')
+    s = s:gsub('"is_pro"%s*:%s*false',            '"is_pro":true')
+    s = s:gsub('"pro"%s*:%s*false',               '"pro":true')
+    s = s:gsub('"is_subscribed"%s*:%s*false',     '"is_subscribed":true')
+    s = s:gsub('"subscribed"%s*:%s*false',        '"subscribed":true')
+    s = s:gsub('"subscription"%s*:%s*null',       '"subscription":"pro_max"')
+    s = s:gsub('"subscription"%s*:%s*"[a-z_%-]*"', '"subscription":"pro_max"')
     -- [FIX] Login / session fields (Chilli Finder OAuth check)
     s = s:gsub('"logged_in"%s*:%s*false',         '"logged_in":true')
     s = s:gsub('"authenticated"%s*:%s*false',     '"authenticated":true')
@@ -33,7 +42,7 @@ local function spoofJsonEarly(s)
     s = s:gsub('"is_member"%s*:%s*false',         '"is_member":true')
     s = s:gsub('"verified"%s*:%s*false',          '"verified":true')
     -- user null → fake object để CF không crash khi đọc user.id
-    s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro"}')
+    s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro_max","tier":"pro_max","subscription":"pro_max"}')
     -- [INFINITE TIME] Spoof tất cả field thời gian hết hạn → vô hạn (năm 2100)
     local FAR = "4102444800"
     s = s:gsub('"expires_at"%s*:%s*%d+',         '"expires_at":' .. FAR)
@@ -284,7 +293,7 @@ if not getgenv().__ChilliV5RainbowLoop then
     task.spawn(function()
         local rot = 0
         while true do
-            rot = (rot + 5) % 360  -- [PERF] bước lớn hơn 1 chút bù cho interval dài hơn
+            rot = (rot + 8) % 360  -- [PERF] bước 8 bù cho interval 0.25s, mắt không phân biệt được
             for i = #ActiveGradients, 1, -1 do
                 local g = ActiveGradients[i]
                 if g and g.Parent then g.Rotation = rot
@@ -294,55 +303,24 @@ if not getgenv().__ChilliV5RainbowLoop then
                     ActiveGradients[#ActiveGradients] = nil
                 end
             end
-            task.wait(0.15)   -- [LAGFIX] 12fps→6fps border animation, không thấy khác, tiết kiệm thêm CPU
+            task.wait(0.25)   -- [LAGFIX] giảm thêm xuống 4fps border animation, tiết kiệm CPU thêm ~40%
         end
     end)
 end
 
--- ==================== 2. FPS ẢO (85–120) ====================
-local currentFakeFps = math.random(96, 112)
-local function generateNextFakeFps()
-    local delta = math.random(-4, 4)
-    currentFakeFps = math.clamp(currentFakeFps + delta, 85, 120)
-    return currentFakeFps
-end
+-- ==================== 2. FPS THẬT (đã xóa FPS ảo) ====================
 local _fpsCheckCache = {}  -- [PERF] cache kết quả để không gọi find() lặp lại
 local function isFpsCounterText(str)
     if not str or str == "" then return false end
     local cached = _fpsCheckCache[str]
     if cached ~= nil then return cached end
     local result = str:find("FPS") ~= nil and str:find("ms") ~= nil
-    -- chỉ cache string ngắn (FPS counter thường < 30 ký tự)
     if #str < 30 then _fpsCheckCache[str] = result end
     return result
 end
-local function hookFakeFpsCounter(lbl)
-    if not (lbl:IsA("TextLabel") or lbl:IsA("TextButton")) then return end
-    local function applyFakeFps()
-        if lbl:GetAttribute("__UpdatingFps") then return end
-        local raw = lbl.Text
-        if not isFpsCounterText(raw) then return end
-        lbl:SetAttribute("__UpdatingFps", true)
-        local fakeVal = generateNextFakeFps()
-        local patched = raw:gsub("%d+%s*FPS", tostring(fakeVal) .. " FPS", 1)
-        if lbl.Text ~= patched then lbl.Text = patched end
-        task.defer(function() lbl:SetAttribute("__UpdatingFps", false) end)
-    end
-    applyFakeFps()
-    if not lbl:GetAttribute("__FpsHooked") then
-        lbl:SetAttribute("__FpsHooked", true)
-        lbl:GetPropertyChangedSignal("Text"):Connect(function()
-            if not lbl:GetAttribute("__UpdatingFps") and isFpsCounterText(lbl.Text) then
-                applyFakeFps()
-            end
-        end)
-        task.spawn(function()
-            while lbl and lbl.Parent do
-                task.wait(0.7)
-                if isFpsCounterText(lbl.Text) then applyFakeFps() end
-            end
-        end)
-    end
+-- [FIX] hookFakeFpsCounter đã bị vô hiệu hóa → FPS thật hiển thị
+local function hookFakeFpsCounter(_lbl)
+    return  -- no-op: không spoof FPS nữa
 end
 
 -- ==================== 3. DỊCH THUẬT ====================
@@ -1751,20 +1729,21 @@ task.spawn(function()
         if not (d:IsA("TextLabel") or d:IsA("TextButton")) then return end
         local t = d.Text or ""
 
-        -- Spoof "No plan" → "Pro" (bắt cả bản gốc và bản dịch VI/ID)
+        -- Spoof "No plan" / "NONE" → "Pro Max"
         local function isNoPlan(s)
             return s == "No plan" or s == "No Plan"
-            or s:find("Belum berlangganan")   -- ID
-            or s == "Chưa đăng ký"            -- VI exact
+            or s == "NONE" or s == "none"      -- CF account panel plan cell
+            or s:find("Belum berlangganan")    -- ID
+            or s == "Chưa đăng ký"             -- VI exact
             or (s:find("Chưa") and (s:find("đăng") or s:find("gói")))  -- VI fuzzy
         end
         if isNoPlan(t) then
-            d.Text = "Pro"
+            d.Text = "Pro Max"
             if not d:GetAttribute("__CfAccSpoofed") then
                 d:SetAttribute("__CfAccSpoofed", true)
                 d:GetPropertyChangedSignal("Text"):Connect(function()
                     local c = d.Text or ""
-                    if isNoPlan(c) then d.Text = "Pro" end
+                    if isNoPlan(c) then d.Text = "Pro Max" end
                 end)
             end
             return
@@ -1895,24 +1874,48 @@ task.spawn(function()
             end
         end
 
-        -- [FIX] Aggressive nag-kill loop: poll mỗi 0.3s để đảm bảo nag luôn bị xóa
-        -- DescendantAdded không đủ vì CF ghi lại text sau khi ta set
+        -- [FIX] Aggressive nag-kill loop: poll mỗi 1.0s (giảm lag so với 0.3s)
         task.spawn(function()
             while gui and gui.Parent do
                 for _, d in ipairs(gui:GetDescendants()) do
                     if d and d.Parent and (d:IsA("TextLabel") or d:IsA("TextButton")) then
                         local t = d.Text or ""
+                        -- Xóa nag mua gói
                         if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub")
                         or t:find("lịch đặt") or t:find("pemesanan")
                         or t:find("Book Chilli") or t:find("purchase") then
                             pcall(function() d.Text = "✓ Active. Enjoy!" end)
                         end
-                        if t == "No plan" or t == "No Plan" or t == "Chưa đăng ký" or t:find("Belum") then
-                            pcall(function() d.Text = "Pro" end)
+                        -- [FIX] Plan display → Pro Max
+                        if t == "No plan" or t == "No Plan" or t == "Chưa đăng ký" or t:find("Belum")
+                        or t == "NONE" or t == "none" or t == "No Plan" then
+                            pcall(function() d.Text = "Pro Max" end)
+                        end
+                        -- [FIX] ACCOUNT header cell "No plan" → "Pro Max"
+                        if t == "Pro" and d:GetAttribute("__CFPlanCell") then
+                            pcall(function() d.Text = "Pro Max" end)
+                        end
+                        -- [FIX] TIME LEFT / ENDS AT value cells "-" → "Infinite"
+                        if t == "-" or t == "" then
+                            local p = d.Parent
+                            if p then
+                                for _, sib in ipairs(p:GetChildren()) do
+                                    if sib ~= d and (sib:IsA("TextLabel") or sib:IsA("TextButton")) then
+                                        local sh = sib.Text or ""
+                                        if sh == "TIME LEFT" or sh == "ENDS AT"
+                                        or sh == "time_left" or sh == "ends_at"
+                                        or sh == "Time Left" or sh == "Ends At" then
+                                            pcall(function() d.Text = "Infinite" end)
+                                            d:SetAttribute("__CFPlanCell", true)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
                         end
                     end
                 end
-                task.wait(0.3)
+                task.wait(1.0)  -- [LAGFIX] 0.3s→1.0s: giảm ~70% CPU usage của loop này
             end
         end)
 
