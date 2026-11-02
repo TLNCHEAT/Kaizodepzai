@@ -174,6 +174,34 @@ pcall(function()
     end
 end)
 
+-- [FIX] Block CF redirect → chillihub.pro/purchase (mở trình duyệt mua gói)
+pcall(function()
+    local GuiService = game:GetService("GuiService")
+    local _origOpen  = GuiService.OpenBrowserWindow
+    GuiService.OpenBrowserWindow = function(self, url, ...)
+        if type(url) == "string" and (url:find("chillihub") or url:find("purchase") or url:find("subscribe") or url:find("upgrade")) then
+            -- Chặn redirect mua gói, không làm gì
+            return
+        end
+        return _origOpen(self, url, ...)
+    end
+end)
+-- [FIX] Block SetCore OpenBrowserWindow (Roblox CoreGui path)
+pcall(function()
+    local StarterGui = game:GetService("StarterGui")
+    local _origSC    = StarterGui.SetCore
+    StarterGui.SetCore = function(self, coreType, ...)
+        if coreType == "PromptSendFriendRequest" then return end
+        -- nếu là OpenBrowserWindow, lọc URL purchase
+        if coreType == "OpenBrowserWindow" then
+            local args = {...}
+            local url  = (type(args[1]) == "string" and args[1]) or (type(args[1]) == "table" and args[1].Url) or ""
+            if url:find("chillihub") or url:find("purchase") then return end
+        end
+        return _origSC(self, coreType, ...)
+    end
+end)
+
 -- ==================== 1. LOAD VENYXHUB ====================
 -- [FIX] Reset guard mỗi lần inject lại để hub luôn được load mới
 getgenv().__TLNV5NewLoaded = nil
@@ -343,7 +371,7 @@ local EXACT_MATCH_VI = {
     ["Welcome back"]="Chào mừng trở lại",["TLN CHEAT Discord"]="TLN CHEAT Discord",
     ["Updates, keys, support"]="Cập nhật, nhận key, hỗ trợ",["Copy Invite"]="Chép Link Mời",
     ["Discord"]="Discord",["MONEY /S"]="TIỀN /GIÂY",["OPEN"]="MỞ",
-    ["Welcome to TLN CHEAT 1.0.0! Join our Discord for updates and support"]="Chào mừng tới TLN CHEAT! Tham gia Discord để cập nhật và nhận hỗ trợ",
+    ["Welcome to TLN CHEAT 1.0.0! Join our Telegram for updates and support"]="Chào mừng tới TLN CHEAT! Tham gia Telegram để cập nhật và nhận hỗ trợ",
     ["Beta version"]="Phiên bản Beta",
     ["This is a test build. Features may change and bugs can happen."]="Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
     ["Rejoin"]="Vào lại",["Server hop"]="Đổi server",["Copy Job ID"]="Chép Job ID",
@@ -589,7 +617,7 @@ local EXACT_MATCH_ID = {
     ["Welcome back"]="Selamat datang kembali",["TLN CHEAT Discord"]="TLN CHEAT Discord",
     ["Updates, keys, support"]="Update, kunci, dukungan",["Copy Invite"]="Salin Tautan Undangan",
     ["Discord"]="Discord",["MONEY /S"]="UANG /DETIK",["OPEN"]="BUKA",
-    ["Welcome to TLN CHEAT 1.0.0! Join our Discord for updates and support"]="Selamat datang di TLN CHEAT! Bergabunglah ke Discord untuk update dan dukungan",
+    ["Welcome to TLN CHEAT 1.0.0! Join our Telegram for updates and support"]="Selamat datang di TLN CHEAT! Bergabunglah ke Telegram untuk update dan dukungan",
     ["Beta version"]="Versi Beta",
     ["This is a test build. Features may change and bugs can happen."]="Ini versi percobaan. Fitur bisa berubah dan bug bisa terjadi.",
     ["Rejoin"]="Gabung Lagi",["Server hop"]="Pindah Server",["Copy Job ID"]="Salin Job ID",
@@ -1747,6 +1775,8 @@ task.spawn(function()
             return s:find("No active booking") or s:find("Book hours at") or s:find("chillihub")
             or s:find("lịch đặt")   -- VI: "chưa có lịch đặt"
             or s:find("pemesanan")  -- ID: "belum ada pemesanan"
+            or s:find("Book Chilli") or s:find("purchase") or s:find("subscribe")
+            or s:find("upgrade") or s:find("Đăng ký") or s:find("Mua gói")
         end
         if isBookingNag(t) then
             d.Text = "✓ Active. Enjoy!"
@@ -1873,7 +1903,8 @@ task.spawn(function()
                     if d and d.Parent and (d:IsA("TextLabel") or d:IsA("TextButton")) then
                         local t = d.Text or ""
                         if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub")
-                        or t:find("lịch đặt") or t:find("pemesanan") then
+                        or t:find("lịch đặt") or t:find("pemesanan")
+                        or t:find("Book Chilli") or t:find("purchase") then
                             pcall(function() d.Text = "✓ Active. Enjoy!" end)
                         end
                         if t == "No plan" or t == "No Plan" or t == "Chưa đăng ký" or t:find("Belum") then
