@@ -1341,10 +1341,17 @@ local function applyElementTranslation(inst)
     end
     local mapped = translateTLNText(original)
     if inst.Text ~= mapped then
+        -- [FIX] Synchronous retry: VenyxHub có thể đổi text lại ngay trong lúc set
+        -- task.defer quá chậm → VenyxHub win. Retry đồng bộ 3 lần để chắc thắng.
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
-        pcall(function() inst.Text = mapped end)
-        task.defer(function() inst:SetAttribute("__IsTranslating", false) end)
+        for _try = 1, 3 do
+            pcall(function() inst.Text = mapped end)
+            if inst.Text == mapped then break end
+            -- VenyxHub reverted synchronously → retry immediately
+        end
+        -- Clear đồng bộ, KHÔNG defer: nếu defer thì frame tiếp theo VenyxHub update → ta mất
+        inst:SetAttribute("__IsTranslating", false)
     end
 end
 
@@ -1370,20 +1377,20 @@ local function hookTextForTranslation(inst)
 end
 
 local function refreshAllTranslations()
-    -- [LAGFIX] Dùng task.defer thay task.wait: không gây giật frame khi đổi ngôn ngữ
+    -- [FIX] Dùng lại task.wait đồng bộ: task.defer chạy SAU Heartbeat VenyxHub
+    -- → VenyxHub ghi đè translation ngay trước khi deferred task chạy → ta thua.
+    -- task.wait() yield rồi resume CÙNG frame cycle → ta thắng cuộc chiến.
     local n = #TrackedTexts
     local i = 1
+    local batch = 0
     while i <= n do
         local el = TrackedTexts[i]
         if el and el.Parent then
-            -- Defer từng phần tử: spread work ra nhiều frame không block
-            local _el = el
-            task.defer(function()
-                if _el and _el.Parent then
-                    pcall(applyElementTranslation, _el)
-                end
-            end)
+            pcall(applyElementTranslation, el)
             i = i + 1
+            batch = batch + 1
+            -- Yield mỗi 30 element để không block quá lâu (giảm lag từ 50→30)
+            if batch >= 30 then batch = 0; task.wait() end
         else
             TrackedTexts[i] = TrackedTexts[n]
             TrackedTexts[n] = nil
@@ -1424,10 +1431,25 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
 
-    -- Ẩn pill gốc hoàn toàn - không chiến với VenyxHub nữa
+    -- [FIX] Lưu nút gốc VenyxHub TRƯỚC khi ẩn pill
+    -- Dùng firesignal để VenyxHub tự xử lý ngôn ngữ của nó → tránh chiến text
+    local _vxBtn = {VI=nil, EN=nil, ID=nil}
+    for _, child in ipairs(pill:GetChildren()) do
+        if child:IsA("TextButton") then
+            local t = (child.Text or ""):lower()
+            if t:find("vi") or t:find("vi") then _vxBtn.VI = child
+            elseif t:find("en") or t:find("eng") then _vxBtn.EN = child
+            elseif t:find("in") or t:find("id") then _vxBtn.ID = child
+            end
+        end
+    end
+    -- Expose cho setLanguage dùng
+    _G.__TLN_VxBtn = _vxBtn
+
+    -- Ẩn pill gốc hoàn toàn - giữ Active=true để firesignal vẫn hoạt động
     pill.BackgroundTransparency = 1
     pill.Size = UDim2.new(0, 0, 0, 0)
-    pill.Active = false
+    -- KHÔNG set Active=false: firesignal cần button còn active
     pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
         if pill.BackgroundTransparency ~= 1 then pill.BackgroundTransparency = 1 end
     end)
@@ -1504,8 +1526,52 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
         BtnVI.TextColor3 = (lang == "VI") and LIT or DIM
         BtnEN.TextColor3 = (lang == "EN") and LIT or DIM
         BtnID.TextColor3 = (lang == "ID") and LIT or DIM
-        refreshAllTranslations()
+
+        -- [FIX] Fire nút gốc VenyxHub để nó tự dịch ngôn ngữ của nó
+        -- Cách này thắng chiến text vì VenyxHub không chiến với chính nó
+        task.spawn(function()
+            local vxBtns = _G.__TLN_VxBtn or {}
+            local target = vxBtns[lang]
+            if target then
+                -- firesignal: có ở Synapse/KRNL/Delta/Wave
+                pcall(function()
+                    if firesignal then firesignal(target.MouseButton1Click) end
+                end)
+                -- Fallback: dùng mouse simulation nếu có
+                pcall(function()
+                    if mouse1click then mouse1click(target) end
+                end)
+            end
+            -- Chờ VenyxHub cập nhật xong rồi apply thêm bản dịch của ta
+            task.wait(0.1)
+            refreshAllTranslations()
+        end)
     end
+
+    -- [FIX] Vòng lặp sửa định kỳ: VenyxHub có thể ghi đè sau khi ta dịch
+    -- Chạy mỗi 0.5s, chỉ sửa những element bị sai (hầu hết frame không có gì để sửa)
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            if currentLanguage ~= "VI" then
+                -- Chỉ cần sửa khi không phải VI (VI là ngôn ngữ gốc VenyxHub)
+                local n = #TrackedTexts
+                for i = n, 1, -1 do
+                    local el = TrackedTexts[i]
+                    if el and el.Parent then
+                        local last = el:GetAttribute("__LastTranslated")
+                        if last and el.Text ~= last then
+                            pcall(applyElementTranslation, el)
+                        end
+                    else
+                        TrackedTexts[i] = TrackedTexts[n]
+                        TrackedTexts[n] = nil
+                        n = n - 1
+                    end
+                end
+            end
+        end
+    end)
 
     BtnVI.MouseButton1Click:Connect(function() setLanguage("VI") end)
     BtnEN.MouseButton1Click:Connect(function() setLanguage("EN") end)
