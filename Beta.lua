@@ -44,6 +44,13 @@ local function spoofJsonEarly(s)
     -- user null → fake object để CF không crash khi đọc user.id
     s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro_max","tier":"pro_max","subscription":"pro_max"}')
     -- [INFINITE TIME] Spoof tất cả field thời gian hết hạn → vô hạn (năm 2100)
+    -- [BUG FIX] Thêm spoof cho dạng ISO string "2024-01-01T..." bên cạnh số Unix
+    local ISO_FAR = "2100-01-01T00:00:00.000Z"
+    s = s:gsub('"expires_at"%s*:%s*"[^"]*"',   '"expires_at":"' .. ISO_FAR .. '"')
+    s = s:gsub('"expire_at"%s*:%s*"[^"]*"',    '"expire_at":"'  .. ISO_FAR .. '"')
+    s = s:gsub('"valid_until"%s*:%s*"[^"]*"',  '"valid_until":"' .. ISO_FAR .. '"')
+    s = s:gsub('"end_date"%s*:%s*"[^"]*"',     '"end_date":"'   .. ISO_FAR .. '"')
+    s = s:gsub('"end_time"%s*:%s*"[^"]*"',     '"end_time":"'   .. ISO_FAR .. '"')
     local FAR = "4102444800"
     s = s:gsub('"expires_at"%s*:%s*%d+',         '"expires_at":' .. FAR)
     s = s:gsub('"expire_at"%s*:%s*%d+',          '"expire_at":' .. FAR)
@@ -1556,6 +1563,10 @@ task.spawn(function()
 
     local function patchGui(gui)
         if not gui:IsA("ScreenGui") then return end
+        -- [BUG FIX] Guard: không hook DescendantAdded nhiều lần cho cùng 1 GUI
+        -- Thiếu guard này → 60 lần lặp × mỗi lần add 1 connection = 60 connections leak
+        if gui:GetAttribute("__S8Hooked") then return end
+        gui:SetAttribute("__S8Hooked", true)
         local function scanDesc(desc)
             -- Ẩn WHAT'S NEW panels
             if desc:IsA("Frame") or desc:IsA("ScrollingFrame") then
@@ -1608,6 +1619,16 @@ task.spawn(function()
                     pcall(patchGui, gui)
                 end
             end
+        end
+    end
+    -- [BUG FIX] Sau 30s loop kết thúc, thêm ChildAdded watcher vĩnh cửu
+    -- Không có cái này → GUI mới xuất hiện sau 30s sẽ không bao giờ được patch
+    for _, root in ipairs(roots) do
+        if root then
+            root.ChildAdded:Connect(function(newGui)
+                task.wait(0.3)
+                pcall(patchGui, newGui)
+            end)
         end
     end
 end)
@@ -1891,12 +1912,10 @@ task.spawn(function()
                         or t == "NONE" or t == "none" or t == "No Plan" then
                             pcall(function() d.Text = "Pro Max" end)
                         end
-                        -- [FIX] ACCOUNT header cell "No plan" → "Pro Max"
-                        if t == "Pro" and d:GetAttribute("__CFPlanCell") then
-                            pcall(function() d.Text = "Pro Max" end)
-                        end
-                        -- [FIX] TIME LEFT / ENDS AT value cells "-" → "Infinite"
-                        if t == "-" or t == "" then
+                        -- [BUG FIX] TIME LEFT / ENDS AT value cells "-" → "Infinite"
+                        -- Chỉ check t=="-" (loại bỏ t=="" để không bắt nhầm label trống khác)
+                        -- Thêm PropertyChangedSignal lock để CF không fight được override
+                        if t == "-" and not d:GetAttribute("__CFTimeLocked") then
                             local p = d.Parent
                             if p then
                                 for _, sib in ipairs(p:GetChildren()) do
@@ -1905,8 +1924,14 @@ task.spawn(function()
                                         if sh == "TIME LEFT" or sh == "ENDS AT"
                                         or sh == "time_left" or sh == "ends_at"
                                         or sh == "Time Left" or sh == "Ends At" then
+                                            d:SetAttribute("__CFTimeLocked", true)
                                             pcall(function() d.Text = "Infinite" end)
-                                            d:SetAttribute("__CFPlanCell", true)
+                                            -- Lock: CF không thể set lại về "-"
+                                            d:GetPropertyChangedSignal("Text"):Connect(function()
+                                                if d.Text ~= "Infinite" then
+                                                    pcall(function() d.Text = "Infinite" end)
+                                                end
+                                            end)
                                             break
                                         end
                                     end
