@@ -34,6 +34,25 @@ local function spoofJsonEarly(s)
     s = s:gsub('"verified"%s*:%s*false',          '"verified":true')
     -- user null → fake object để CF không crash khi đọc user.id
     s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro"}')
+    -- [INFINITE TIME] Spoof tất cả field thời gian hết hạn → vô hạn (năm 2100)
+    local FAR = "4102444800"
+    s = s:gsub('"expires_at"%s*:%s*%d+',         '"expires_at":' .. FAR)
+    s = s:gsub('"expire_at"%s*:%s*%d+',          '"expire_at":' .. FAR)
+    s = s:gsub('"expired_at"%s*:%s*%d+',         '"expired_at":' .. FAR)
+    s = s:gsub('"valid_until"%s*:%s*%d+',        '"valid_until":' .. FAR)
+    s = s:gsub('"end_date"%s*:%s*%d+',           '"end_date":' .. FAR)
+    s = s:gsub('"end_time"%s*:%s*%d+',           '"end_time":' .. FAR)
+    s = s:gsub('"exp"%s*:%s*%d+',                '"exp":' .. FAR)
+    s = s:gsub('"expires_in"%s*:%s*%-?%d+',      '"expires_in":99999999')
+    s = s:gsub('"time_left"%s*:%s*%-?%d+',       '"time_left":99999999')
+    s = s:gsub('"time_remaining"%s*:%s*%-?%d+',  '"time_remaining":99999999')
+    s = s:gsub('"hours_left"%s*:%s*%-?%d+',      '"hours_left":99999')
+    s = s:gsub('"days_left"%s*:%s*%-?%d+',       '"days_left":99999')
+    s = s:gsub('"minutes_left"%s*:%s*%-?%d+',    '"minutes_left":99999999')
+    s = s:gsub('"seconds_left"%s*:%s*%-?%d+',    '"seconds_left":99999999')
+    s = s:gsub('"expired"%s*:%s*true',            '"expired":false')
+    s = s:gsub('"is_expired"%s*:%s*true',         '"is_expired":false')
+    s = s:gsub('"key_expired"%s*:%s*true',        '"key_expired":false')
     return s
 end
 -- [CRACK] Lưu jobIds từ server list API của Chilli Finder để teleport thẳng
@@ -119,6 +138,39 @@ pcall(function()
             return res
         end
         return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+    end
+end)
+
+-- [FIX] Hook http_request (Delta, Wave, Fluxus dùng tên này thay vì request)
+pcall(function()
+    if type(http_request) == "function" then
+        local _origHR = http_request
+        http_request = function(opts, ...)
+            local ok, res = pcall(_origHR, opts, ...)
+            if ok and type(res) == "table" then
+                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
+                if type(url) == "string" and url:find("chillihub") then
+                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
+                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
+                end
+                return res
+            end
+            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+        end
+    end
+end)
+-- [FIX] Hook HttpService:GetAsync (một số CF module dùng GetAsync thay HttpGet)
+pcall(function()
+    local _HS2    = game:GetService("HttpService")
+    local _origGA = _HS2.GetAsync
+    _HS2.GetAsync = function(self, url, ...)
+        local ok, res = pcall(_origGA, self, url, ...)
+        if not ok then return "" end
+        if type(url) == "string" and url:find("chillihub") then
+            extractCFJobIds(res)
+            return spoofJsonEarly(res)
+        end
+        return res
     end
 end)
 
@@ -1662,7 +1714,7 @@ task.spawn(function()
                     return true
                 end
             end
-            n = n + 1; if n > 50 then break end
+            n = n + 1; if n > 300 then break end
         end
         return false
     end
@@ -1763,14 +1815,34 @@ task.spawn(function()
 
                     -- 3) Teleport
                     if jobId then
-                        pcall(function()
+                        local ok = pcall(function()
                             TeleportService:TeleportToPlaceInstance(
                                 game.PlaceId, jobId, Players.LocalPlayer
                             )
                         end)
+                        -- Nếu teleport lỗi, thử lần lượt các jobId còn lại
+                        if not ok then
+                            for _, jid in ipairs(_G.__CF_JobIds or {}) do
+                                if jid ~= jobId then
+                                    local ok2 = pcall(function()
+                                        TeleportService:TeleportToPlaceInstance(
+                                            game.PlaceId, jid, Players.LocalPlayer
+                                        )
+                                    end)
+                                    if ok2 then break end
+                                end
+                            end
+                        end
                     else
-                        -- 4) Last resort: để CF tự xử lý (plan đã được spoof → CF join được)
-                        -- (original handler vẫn fire sau handler của ta)
+                        -- 4) Last resort: thử tất cả jobId có trong cache
+                        for _, jid in ipairs(_G.__CF_JobIds or {}) do
+                            local ok2 = pcall(function()
+                                TeleportService:TeleportToPlaceInstance(
+                                    game.PlaceId, jid, Players.LocalPlayer
+                                )
+                            end)
+                            if ok2 then break end
+                        end
                     end
                 end)
             end
@@ -1792,6 +1864,26 @@ task.spawn(function()
                 end)
             end
         end
+
+        -- [FIX] Aggressive nag-kill loop: poll mỗi 0.3s để đảm bảo nag luôn bị xóa
+        -- DescendantAdded không đủ vì CF ghi lại text sau khi ta set
+        task.spawn(function()
+            while gui and gui.Parent do
+                for _, d in ipairs(gui:GetDescendants()) do
+                    if d and d.Parent and (d:IsA("TextLabel") or d:IsA("TextButton")) then
+                        local t = d.Text or ""
+                        if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub")
+                        or t:find("lịch đặt") or t:find("pemesanan") then
+                            pcall(function() d.Text = "✓ Active. Enjoy!" end)
+                        end
+                        if t == "No plan" or t == "No Plan" or t == "Chưa đăng ký" or t:find("Belum") then
+                            pcall(function() d.Text = "Pro" end)
+                        end
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
 
         -- Debounced DescendantAdded: gom 100ms
         local pendingBatch, batchRunning = {}, false
