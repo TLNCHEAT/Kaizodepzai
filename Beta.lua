@@ -36,12 +36,35 @@ local function spoofJsonEarly(s)
     s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro"}')
     return s
 end
+-- [CRACK] Lưu jobIds từ server list API của Chilli Finder để teleport thẳng
+_G.__CF_JobIds      = {}  -- danh sách jobId theo thứ tự hiển thị
+_G.__CF_JobIds_tick = 0   -- thời điểm cập nhật gần nhất
+local UUID_RE = "(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)"
+local function extractCFJobIds(body)
+    if type(body) ~= "string" then return end
+    -- Chỉ parse khi response có nhiều hơn 1 UUID (list servers, không phải plan check)
+    local ids = {}
+    for uuid in body:gmatch(UUID_RE) do
+        -- Bỏ qua jobId của server hiện tại và duplicate
+        if uuid ~= game.JobId then
+            local dup = false
+            for _, existing in ipairs(ids) do if existing == uuid then dup=true; break end end
+            if not dup then table.insert(ids, uuid) end
+        end
+    end
+    if #ids >= 1 then
+        _G.__CF_JobIds      = ids
+        _G.__CF_JobIds_tick = tick()
+    end
+end
+
 pcall(function()
     local _origHG = game.HttpGet
     game.HttpGet = function(self, url, ...)
         local ok, res = pcall(_origHG, self, url, ...)
         if not ok then return "" end
         if type(url) == "string" and url:find("chillihub") then
+            extractCFJobIds(res)   -- [CRACK] lưu jobIds trước khi spoof
             return spoofJsonEarly(res)
         end
         return res
@@ -57,8 +80,8 @@ pcall(function()
             if ok and type(res) == "table" then
                 local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
                 if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then res.Body = spoofJsonEarly(res.Body) end
-                    if type(res.body) == "string" then res.body = spoofJsonEarly(res.body) end
+                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
+                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
                 end
                 return res
             end
@@ -66,7 +89,6 @@ pcall(function()
         end
     end
 end)
--- [FIX] syn.request / http.request fallback
 pcall(function()
     if syn and type(syn.request) == "function" then
         local _s = syn.request
@@ -75,7 +97,7 @@ pcall(function()
             if ok and type(res) == "table" then
                 local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
                 if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then res.Body = spoofJsonEarly(res.Body) end
+                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
                 end
                 return res
             end
@@ -91,6 +113,7 @@ pcall(function()
         if ok and type(res) == "table" then
             local url = (type(opts) == "table" and opts.Url) or ""
             if url:find("chillihub") then
+                extractCFJobIds(res.Body or "")  -- [CRACK]
                 res.Body = spoofJsonEarly(res.Body or "")
             end
             return res
@@ -245,17 +268,8 @@ end
 -- ==================== 3. DỊCH THUẬT ====================
 local currentLanguage = "VI"
 local FastCache       = {}
-local FastCacheSize   = 0   -- [PERF] đếm riêng để tránh pairs() đếm mỗi lần
 local TrackedTexts    = {}
 local GlobalRefreshIslandStatus = nil
-
--- [PERF] Helper ghi cache với cap 800 entry - ngăn bộ nhớ phình vô hạn
-local function setCache(key, value)
-    if FastCache[key] then return end  -- đã có, không tăng size
-    if FastCacheSize >= 800 then FastCache = {}; FastCacheSize = 0 end
-    FastCache[key] = value
-    FastCacheSize = FastCacheSize + 1
-end
 
 -- ---- EXACT VI ----
 local EXACT_MATCH_VI = {
@@ -501,115 +515,6 @@ local EXACT_MATCH_VI = {
     ["Clear all quick bars"]="Xóa tất cả thanh nhanh",["Clear all keybinds"]="Xóa tất cả phím tắt",
     ["Instant steps"]="Bước tức thì",["STEAL / AUTO STEAL"]="CƯỚP / TỰ ĐỘNG CƯỚP",
     ["slider"]="thanh trượt",["+ PIN"]="+ GHIM",
-    -- Steal Panel
-    ["Steal Panel"]="Bảng Cướp Trứng",
-    ["STEAL"]="CƯỚP",
-    ["Auto Steal: ON"]="Tự Động Cướp: BẬT",
-    ["Auto Steal: OFF"]="Tự Động Cướp: TẮT",
-    ["Halloween: ON"]="Halloween: BẬT",
-    ["Halloween: OFF"]="Halloween: TẮT",
-    ["Eggs: All"]="Trứng: Tất Cả",
-    ["Eggs: Filter"]="Trứng: Lọc",
-    -- Chilli Finder
-    ["Chilli Finder"]="Tìm Máy Chủ",
-    ["AUTO OFF"]="TỰ ĐỘNG TẮT",
-    ["AUTO ON"]="TỰ ĐỘNG BẬT",
-    ["FORCE JOIN"]="VÀO NGAY",
-    ["MIN VALUE"]="GIÁ TRỊ TỐI THIỂU",
-    ["RARITY"]="ĐỘ HIẾM",
-    ["ACCOUNT"]="TÀI KHOẢN",
-    ["Any"]="Bất Kỳ",
-    ["No plan"]="Chưa đăng ký",
-    ["Active"]="Đang hoạt động",
-    ["Join"]="Vào",
-    -- ===== BỔ SUNG TỪ ẢNH CHỤP (các chuỗi còn bỏ sót) =====
-    -- Dropdown options (Move to egg / Delivery method)
-    ["Walk"]="Đi bộ",
-    ["Teleport"]="Dịch chuyển",
-    ["Quick steps"]="Bước nhanh",
-    ["Fast tween"]="Bay nhanh",
-    ["Teleport delivery method"]="Phương thức dịch chuyển",
-    ["Move to egg"]="Di chuyển tới trứng",
-    -- Tab sự kiện
-    ["Halloween & Star"]="Halloween & Sao Băng",
-    ["HALLOWEEN & STAR"]="HALLOWEEN & SAO BĂNG",
-    ["The Hollow"]="The Hollow",
-    -- Halloween section
-    ["Steal missing Halloween index"]="Cướp Halloween thiếu trong Chỉ mục",
-    ["Place and hatch missing index eggs"]="Đặt và ấp trứng thiếu trong Chỉ mục",
-    -- Pumpkin Boss
-    ["PUMPKIN BOSS"]="PUMPKIN BOSS",
-    ["Auto Pumpkin boss"]="Tự động boss Pumpkin",
-    ["Auto dodge attacks"]="Tự động né đòn",
-    ["Auto claim mastery"]="Tự nhận Mastery",
-    ["Stubs pickup speed"]="Tốc độ nhặt Stubs",
-    ["Auto manor key"]="Tự nhận Manor Key",
-    ["KILLS"]="TIÊU DIỆT",
-    ["MANOR KEY"]="MANOR KEY",
-    -- Quái vật / Blood Moon
-    ["Monsters"]="Quái Vật",
-    ["Only during Blood Moon"]="Chỉ trong Blood Moon",
-    ["Farm all monsters in Blood Moon"]="Farm quái vật trong Blood Moon",
-    -- The Hollow racing
-    ["Auto race The Hollow"]="Tự động đua The Hollow",
-    ["Lower it if laps do not count"]="Giảm tốc nếu vòng đua không được tính",
-    -- Câu cá / Ghost Dog
-    ["Farm monsters while fishing"]="Farm quái vật khi câu cá",
-    ["Fishing spot"]="Điểm câu cá",
-    ["Save spot here"]="Lưu điểm này",
-    ["FISHING HISTORY"]="LỊCH SỬ CÂU CÁ",
-    -- Trạng thái chung
-    ["Enabled"]="Đã bật",
-    ["Disabled"]="Đã tắt",
-    ["ON"]="BẬT",
-    ["Loading..."]="Đang tải...",
-    ["Please wait..."]="Vui lòng chờ...",
-    ["Copied!"]="Đã chép!",
-    ["Click to copy"]="Nhấn để chép",
-    ["Success"]="Thành công",
-    ["Error"]="Lỗi",
-    ["No servers found"]="Không tìm thấy máy chủ",
-    ["No results"]="Không có kết quả",
-    -- Gói tài khoản
-    ["Premium"]="Premium",
-    ["Basic"]="Cơ bản",
-    ["Pro"]="Pro",
-    ["Key"]="Key",
-    -- Thời gian từ (dạng đầy đủ)
-    ["just now"]="vừa xong",
-    ["Just now"]="Vừa xong",
-    ["1 second ago"]="1 giây trước",
-    ["1 minute ago"]="1 phút trước",
-    ["1 hour ago"]="1 giờ trước",
-    ["1 day ago"]="1 ngày trước",
-    -- Trạng thái kết nối
-    ["Connected"]="Đã kết nối",
-    ["Disconnected"]="Mất kết nối",
-    ["Not connected"]="Chưa kết nối",
-    -- Thông báo hay gặp
-    ["None selected"]="Chưa chọn",
-    ["Select one"]="Chọn một",
-    ["No items"]="Không có mục nào",
-    ["Confirm"]="Xác nhận",
-    ["Cancel"]="Hủy",
-    ["Apply"]="Áp dụng",
-    ["Close"]="Đóng",
-    ["Open"]="Mở",
-    ["Back"]="Quay lại",
-    ["Next"]="Tiếp",
-    ["Done"]="Xong",
-    ["Retry"]="Thử lại",
-    ["Refresh"]="Làm mới",
-    ["Update"]="Cập nhật",
-    -- Cướp / event
-    ["Waiting for event"]="Đang chờ sự kiện",
-    ["Event ended"]="Sự kiện đã kết thúc",
-    ["Event starting"]="Sự kiện sắp bắt đầu",
-    ["No egg to steal"]="Không có trứng để cướp",
-    ["Bag full"]="Đầy túi",
-    ["Sold"]="Đã bán",
-    ["Placed"]="Đã đặt",
-    ["Hatched"]="Đã ấp",
 }
 
 -- ---- EXACT ID (from TLN_CHEAT_FULL) ----
@@ -842,94 +747,6 @@ local EXACT_MATCH_ID = {
     ["Instant steps"]="Langkah instan",["STEAL / AUTO STEAL"]="CURI / CURI OTOMATIS",
     ["Ping user ID"]="Ping User ID",["Discord user ID"]="Masukkan Discord User ID",
     ["Ping role ID"]="Ping Role ID",["Discord role ID"]="Masukkan Discord Role ID",
-    -- Steal Panel
-    ["Steal Panel"]="Panel Curi Telur",
-    ["STEAL"]="CURI",
-    ["Auto Steal: ON"]="Curi Otomatis: NYALA",
-    ["Auto Steal: OFF"]="Curi Otomatis: MATI",
-    ["Halloween: ON"]="Halloween: NYALA",
-    ["Halloween: OFF"]="Halloween: MATI",
-    ["Eggs: All"]="Telur: Semua",
-    ["Eggs: Filter"]="Telur: Filter",
-    -- Chilli Finder
-    ["Chilli Finder"]="Cari Server",
-    ["AUTO OFF"]="MATI OTOMATIS",
-    ["AUTO ON"]="NYALA OTOMATIS",
-    ["FORCE JOIN"]="MASUK PAKSA",
-    ["MIN VALUE"]="NILAI MINIMUM",
-    ["RARITY"]="KELANGKAAN",
-    ["ACCOUNT"]="AKUN",
-    ["Any"]="Semua",
-    ["No plan"]="Belum berlangganan",
-    ["Active"]="Aktif",
-    ["Join"]="Masuk",
-    -- ===== BỔ SUNG TỪ VI (các chuỗi còn thiếu trong ID) =====
-    ["slider"]="penggeser",["+ PIN"]="+ PIN",
-    ["Enabled"]="Diaktifkan",["Disabled"]="Dinonaktifkan",
-    ["ON"]="NYALA",["Loading..."]="Memuat...",["Please wait..."]="Harap tunggu...",
-    ["Copied!"]="Tersalin!",["Click to copy"]="Klik untuk salin",
-    ["Success"]="Berhasil",["Error"]="Kesalahan",
-    ["No servers found"]="Tidak ada server",["No results"]="Tidak ada hasil",
-    ["Premium"]="Premium",["Basic"]="Dasar",["Pro"]="Pro",["Key"]="Kunci",
-    ["just now"]="baru saja",["Just now"]="Baru saja",
-    ["1 second ago"]="1 detik lalu",["1 minute ago"]="1 menit lalu",
-    ["1 hour ago"]="1 jam lalu",["1 day ago"]="1 hari lalu",
-    ["Connected"]="Terhubung",["Disconnected"]="Terputus",["Not connected"]="Belum terhubung",
-    ["None selected"]="Belum dipilih",["Select one"]="Pilih satu",["No items"]="Tidak ada item",
-    ["Confirm"]="Konfirmasi",["Cancel"]="Batal",["Apply"]="Terapkan",["Close"]="Tutup",
-    ["Open"]="Buka",["Back"]="Kembali",["Next"]="Berikutnya",["Done"]="Selesai",
-    ["Retry"]="Coba lagi",["Refresh"]="Perbarui",["Update"]="Perbarui",
-    ["Waiting for event"]="Menunggu event",["Event ended"]="Event berakhir",
-    ["Event starting"]="Event dimulai",["No egg to steal"]="Tidak ada telur untuk dicuri",
-    ["Bag full"]="Tas penuh",["Sold"]="Terjual",["Placed"]="Ditempatkan",["Hatched"]="Menetas",
-    -- Dropdown di chức năng Move/Deliver
-    ["Walk"]="Jalan kaki",["Quick steps"]="Langkah cepat",
-    ["Fast tween"]="Terbang cepat",["Teleport delivery method"]="Metode antar teleport",
-    ["Move to egg"]="Bergerak ke telur",
-    -- Tab sự kiện
-    ["Halloween & Star"]="Halloween & Bintang Jatuh",
-    ["HALLOWEEN & STAR"]="HALLOWEEN & BINTANG JATUH",
-    ["The Hollow"]="The Hollow",
-    ["Steal missing Halloween index"]="Curi telur Halloween yang kurang",
-    ["Place and hatch missing index eggs"]="Tempatkan dan tetaskan telur indeks yang kurang",
-    -- Pumpkin Boss
-    ["PUMPKIN BOSS"]="BOSS LABU",
-    ["Auto Pumpkin boss"]="Boss Labu otomatis",
-    ["Auto dodge attacks"]="Hindari serangan otomatis",
-    ["Auto claim mastery"]="Klaim Mastery otomatis",
-    ["Stubs pickup speed"]="Kecepatan ambil Stubs",
-    ["Auto manor key"]="Ambil Kunci Manor otomatis",
-    ["KILLS"]="PEMBUNUHAN",["MANOR KEY"]="KUNCI MANOR",
-    -- Monster / Blood Moon
-    ["Monsters"]="Monster",
-    ["Only during Blood Moon"]="Hanya saat Blood Moon",
-    ["Farm all monsters in Blood Moon"]="Farm semua monster di Blood Moon",
-    -- The Hollow racing
-    ["Auto race The Hollow"]="Balapan The Hollow otomatis",
-    ["Lower it if laps do not count"]="Turunkan jika putaran tidak dihitung",
-    -- Câu cá / Ghost Dog
-    ["Farm monsters while fishing"]="Farm monster saat memancing",
-    ["Fishing spot"]="Titik memancing",
-    ["Save spot here"]="Simpan titik ini",
-    ["FISHING HISTORY"]="RIWAYAT MEMANCING",
-    -- Island / Zone names còn thiếu
-    ["Enchanted Forest"]="Hutan Terpesona (Enchanted Forest)",
-    ["Light Dark"]="Terang Gelap (Light Dark)",
-    ["Titan Temple"]="Kuil Titan (Titan Temple)",
-    ["Cherry Blossom"]="Bunga Sakura (Cherry Blossom)",
-    ["Prehistoric"]="Prasejarah (Prehistoric)",
-    ["Abyss Ocean"]="Samudra Jurang (Abyss Ocean)",
-    ["Volcano"]="Gunung Api (Volcano)",["Snow"]="Salju (Snow)",
-    ["Jungle"]="Hutan Lebat (Jungle)",["Desert"]="Gurun (Desert)",
-    ["Lake"]="Danau (Lake)",["Forest"]="Hutan (Forest)",
-    ["Silver"]="Perak (Silver)",["Rainbow"]="Pelangi (Rainbow)",
-    ["Golden"]="Emas (Golden)",["Fractured"]="Retak (Fractured)",
-    ["Scrambled"]="Acak (Scrambled)",["Enchanted"]="Terpesona (Enchanted)",
-    ["Nitro"]="Nitro",
-    ["SCRAMBLED"]="ACAK",["NITRO"]="NITRO",["FRACTURED"]="RETAK",["ENCHANTED"]="TERPESONA",
-    -- Prefix icon (emoji prefix cho auto steal, v.v.)
-    ["Top goes first. A carried egg is always delivered first, and before the field opens every task waits in the safe zone."]="Yang atas dikerjakan dulu. Telur yang dibawa selalu diantar duluan, dan sebelum area terbuka semua tugas menunggu di zona aman.",
-    ["A Shooting Star is rare and only you can catch yours. It lands in Cosmic, runs from you, and needs a 1.6 s hold."]="Bintang Jatuh sangat langka dan hanya kamu yang bisa menangkapnya. Ia mendarat di Kosmik, kabur dari kamu, dan butuh tahan 1,6 detik.",
 }
 
 -- ---- PATTERNS ID (from TLN_CHEAT_FULL) ----
@@ -954,50 +771,6 @@ local STATUS_ACTION_PATTERNS_ID = {
     {pat="^[Ff]using (.+)$",rep="Menggabungkan %1"},
     {pat="^[Cc]atching (.+)$",rep="Menangkap %1"},
     {pat="^[Ww]aiting for (.+)$",rep="Menunggu %1"},
-    -- Bổ sung từ VI
-    {pat="^[Bb]ringing (.+) home$",rep="Membawa %1 ke rumah"},
-    {pat="^[Bb]ringing (.+)$",rep="Membawa %1"},
-    {pat="^[Tt]aking (.+) from (.+)$",rep="Mengambil %1 dari %2"},
-    {pat="^[Tt]aking (.+) home$",rep="Membawa %1 ke rumah"},
-    {pat="^[Tt]aking (.+)$",rep="Mengambil %1"},
-    {pat="^[Gg]rabbing (.+)$",rep="Meraih %1"},
-    {pat="^[Pp]icking up (.+)$",rep="Memungut %1"},
-    {pat="^[Hh]olding (.+)$",rep="Memegang %1"},
-    {pat="^[Cc]apturing (.+)$",rep="Menangkap %1"},
-    {pat="^[Dd]ropping (.+) at (.+)$",rep="Menjatuhkan %1 di %2"},
-    {pat="^[Dd]ropping (.+)$",rep="Menjatuhkan %1"},
-    {pat="^[Ff]lying to (.+)$",rep="Terbang ke %1"},
-    {pat="^[Ww]alking to (.+)$",rep="Berjalan ke %1"},
-    {pat="^[Rr]unning to (.+)$",rep="Berlari ke %1"},
-    {pat="^[Hh]eading to (.+)$",rep="Menuju %1"},
-    {pat="^[Rr]eturning to (.+)$",rep="Kembali ke %1"},
-    {pat="^[Mm]utating (.+)$",rep="Mutasi %1"},
-    {pat="^[Uu]pgrading (.+)$",rep="Meningkatkan %1"},
-    {pat="^[Bb]uying (.+)$",rep="Membeli %1"},
-    {pat="^[Cc]laiming (.+)$",rep="Mengklaim %1"},
-    {pat="^[Ee]quipping (.+)$",rep="Memakai %1"},
-    {pat="^[Ff]avoriting (.+)$",rep="Memfavoritkan %1"},
-    {pat="^[Ee]jecting (.+)$",rep="Mengeluarkan %1"},
-    {pat="^[Cc]hasing (.+)$",rep="Mengejar %1"},
-    {pat="^[Aa]ttacking (.+)$",rep="Menyerang %1"},
-    {pat="^[Hh]itting (.+)$",rep="Memukul %1"},
-    {pat="^[Kk]illing (.+)$",rep="Membunuh %1"},
-    {pat="^[Tt]rading (.+) for (.+)$",rep="Menukar %1 dengan %2"},
-    {pat="^[Tt]rading in (.+)$",rep="Menukarkan %1"},
-    {pat="^[Tt]rading (.+)$",rep="Menukar %1"},
-    {pat="^[Cc]rafting (.+)$",rep="Membuat %1"},
-    {pat="^[Rr]erolling (.+)$",rep="Mengacak ulang %1"},
-    {pat="^[Aa]voiding (.+)$",rep="Menghindari %1"},
-    {pat="^[Ee]vading (.+)$",rep="Menghindar dari %1"},
-    {pat="^[Ff]arming (.+)$",rep="Farm %1"},
-    {pat="^[Uu]sing (.+)$",rep="Menggunakan %1"},
-    {pat="^[Jj]oining (.+)$",rep="Bergabung ke %1"},
-    {pat="^[Hh]opping (.+)$",rep="Pindah %1"},
-    {pat="^[Ww]aiting in (.+)$",rep="Menunggu di %1"},
-    {pat="^[Ww]aiting %((.+)%)$",rep="Menunggu (%1)"},
-    {pat="^[Ss]earching for (.+)$",rep="Mencari %1"},
-    {pat="^[Ll]ooking for (.+)$",rep="Mencari %1"},
-    {pat="^[Cc]ollecting (.+)$",rep="Mengumpulkan %1"},
 }
 local FALLBACK_VERB_PREFIX_ID = {
     ["Carrying "]="Membawa ",["Delivering "]="Mengantarkan ",["Stealing "]="Mencuri ",
@@ -1007,15 +780,6 @@ local FALLBACK_VERB_PREFIX_ID = {
     ["Catching "]="Menangkap ",["Waiting "]="Menunggu ",["Claiming "]="Mengklaim ",
     ["Upgrading "]="Meningkatkan ",["Buying "]="Membeli ",["Collecting "]="Mengumpulkan ",
     ["Dropping "]="Menjatuhkan ",["Returning "]="Kembali ",["Avoiding "]="Menghindari ",
-    -- Bổ sung từ VI
-    ["Walking "]="Berjalan ",["Running "]="Berlari ",["Flying "]="Terbang ",
-    ["Chasing "]="Mengejar ",["Searching "]="Mencari ",["Attacking "]="Menyerang ",
-    ["Hitting "]="Memukul ",["Farming "]="Farm ",["Trading "]="Menukar ",
-    ["Crafting "]="Membuat ",["Holding "]="Memegang ",["Ejecting "]="Mengeluarkan ",
-    ["Equipping "]="Memakai ",["Favoriting "]="Memfavoritkan ",["Bringing "]="Membawa ",
-    ["Taking "]="Mengambil ",["Grabbing "]="Meraih ",["Picking "]="Memungut ",
-    ["Capturing "]="Menangkap ",["Evading "]="Menghindar ",["Using "]="Menggunakan ",
-    ["Joining "]="Bergabung ke ",["Hopping "]="Pindah ",
 }
 local DYNAMIC_PATTERNS_ID = {
     {pat="^QUICK BAR (%d+)$",rep="BILAH CEPAT %1"},
@@ -1023,54 +787,6 @@ local DYNAMIC_PATTERNS_ID = {
     {pat="^READY (%d+)$",rep="SIAP %1"},
     {pat="^GROWING (%d+)$",rep="TUMBUH %1"},
     {pat="^IN BAG (%d+)$",rep="DI TAS %1"},
-    -- Waktu "X ago" singkat
-    {pat="^(%d+)s ago$",rep="%1 detik lalu"},
-    {pat="^(%d+)m ago$",rep="%1 menit lalu"},
-    {pat="^(%d+)h ago$",rep="%1 jam lalu"},
-    {pat="^(%d+)d ago$",rep="%1 hari lalu"},
-    -- Waktu "X ago" panjang
-    {pat="^(%d+) seconds? ago$",rep="%1 detik lalu"},
-    {pat="^(%d+) minutes? ago$",rep="%1 menit lalu"},
-    {pat="^(%d+) hours? ago$",rep="%1 jam lalu"},
-    {pat="^(%d+) days? ago$",rep="%1 hari lalu"},
-    {pat="^just now$",rep="baru saja"},
-    -- Chilli Finder
-    {pat="^Hi (.+), no active booking%. Book hours at (.+)$",rep="Hei %1, belum ada pemesanan aktif. Pesan di %2"},
-    {pat="^Hi (.+), your booking is active%. Enjoy%!$",rep="Hei %1, pemesanan aktif. Selamat bermain!"},
-    -- Countdown timer
-    {pat="^(%d+)m (%d+)s$",rep="%1 menit %2 detik"},
-    {pat="^(%d+)h (%d+)m$",rep="%1 jam %2 menit"},
-    {pat="^(%d+)h (%d+)m (%d+)s$",rep="%1 jam %2 menit %3 detik"},
-    -- Steal Panel tombol dinamis
-    {pat="^Auto Steal: (ON)$",rep="Curi Otomatis: NYALA"},
-    {pat="^Auto Steal: (OFF)$",rep="Curi Otomatis: MATI"},
-    {pat="^Halloween: (ON)$",rep="Halloween: NYALA"},
-    {pat="^Halloween: (OFF)$",rep="Halloween: MATI"},
-    {pat="^Eggs: (.+)$",rep="Telur: %1"},
-    -- Generic ON/OFF suffix (fallback)
-    {pat="^(.+): ON$",rep="%1: NYALA"},
-    {pat="^(.+): OFF$",rep="%1: MATI"},
-    -- Patch nama Venyx
-    {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 jam lalu"},
-    {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 menit lalu"},
-    {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 hari lalu"},
-    -- Pen / telur dinamis
-    {pat="Pen (%d+/%d+) · (%d+) egg%(s%) ready to place",rep="Kandang %1 · %2 telur siap ditempatkan"},
-    {pat="(%d+) egg%(s%) can be mutated",rep="%1 telur bisa dimutasi"},
-    {pat="(%d+) pet%(s%) match",rep="%1 pet cocok filter"},
-    {pat="(%d+) egg%(s%) match",rep="%1 telur cocok filter"},
-    {pat="(%d+) lab egg%(s%) match",rep="%1 telur Lab cocok filter"},
-    {pat="^(%d+) pets$",rep="%1 hewan peliharaan"},
-    {pat="(%d+ / %d+) players · (.+)",rep="%1 pemain · %2"},
-    -- Bổ sung từ VI
-    {pat="Experimental Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Eksperimental · butuh %1 · pity %2 · reroll %3 · %4"},
-    {pat="Biohazard Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Biohazard · butuh %1 · pity %2 · reroll %3 · %4"},
-    {pat="Unstable DNA · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="DNA Tidak Stabil · butuh %1 · pity %2 · reroll %3 · %4"},
-    {pat="^Mythic · 1 in ([%d%.]+)$",rep="Mitos · 1 dari %1"},
-    {pat="^Cosmic · 1 in ([%d%.]+)$",rep="Kosmik · 1 dari %1"},
-    {pat="^Secret · 1 in ([%d%.]+)$",rep="Rahasia · 1 dari %1"},
-    {pat="^Divine · 1 in ([%d%.]+)$",rep="Ilahi · 1 dari %1"},
-    {pat="^Eternal · 1 in ([%d%.]+)$",rep="Abadi · 1 dari %1"},
 }
 
 -- ---- PATTERNS VI (merged – FULL base + Beta extras) ----
@@ -1154,33 +870,6 @@ local FALLBACK_VERB_PREFIX_VI = {
 }
 local DYNAMIC_PATTERNS_VI = {
     {pat="^QUICK BAR (%d+)$",rep="THANH NHANH %1"},
-    -- Thời gian "X ago" dạng viết tắt
-    {pat="^(%d+)s ago$",rep="%1 giây trước"},
-    {pat="^(%d+)m ago$",rep="%1 phút trước"},
-    {pat="^(%d+)h ago$",rep="%1 giờ trước"},
-    {pat="^(%d+)d ago$",rep="%1 ngày trước"},
-    -- Thời gian "X ago" dạng đầy đủ
-    {pat="^(%d+) seconds? ago$",rep="%1 giây trước"},
-    {pat="^(%d+) minutes? ago$",rep="%1 phút trước"},
-    {pat="^(%d+) hours? ago$",rep="%1 giờ trước"},
-    {pat="^(%d+) days? ago$",rep="%1 ngày trước"},
-    {pat="^just now$",rep="vừa xong"},
-    -- Chilli Finder
-    {pat="^Hi (.+), no active booking%. Book hours at (.+)$",rep="Xin chào %1, chưa có lịch đặt. Đặt lịch tại %2"},
-    {pat="^Hi (.+), your booking is active%. Enjoy%!$",rep="Xin chào %1, lịch đặt đang hoạt động. Chúc vui!"},
-    -- Countdown timer "Xm Xs" hoặc "Xh Xm"
-    {pat="^(%d+)m (%d+)s$",rep="%1 phút %2 giây"},
-    {pat="^(%d+)h (%d+)m$",rep="%1 giờ %2 phút"},
-    {pat="^(%d+)h (%d+)m (%d+)s$",rep="%1 giờ %2 phút %3 giây"},
-    -- Steal Panel buttons động
-    {pat="^Auto Steal: (ON)$",rep="Tự Động Cướp: BẬT"},
-    {pat="^Auto Steal: (OFF)$",rep="Tự Động Cướp: TẮT"},
-    {pat="^Halloween: (ON)$",rep="Halloween: BẬT"},
-    {pat="^Halloween: (OFF)$",rep="Halloween: TẮT"},
-    {pat="^Eggs: (.+)$",rep="Trứng: %1"},
-    -- Generic ON/OFF suffix (fallback)
-    {pat="^(.+): ON$",rep="%1: BẬT"},
-    {pat="^(.+): OFF$",rep="%1: TẮT"},
     {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 giờ trước"},
     {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 phút trước"},
     {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 ngày trước"},
@@ -1206,21 +895,6 @@ local DYNAMIC_PATTERNS_VI = {
 }
 
 -- ==================== 4. HÀM DỊCH ====================
--- Reverse lookup: dịch ngược VI/ID → EN để phục hồi OrigRawText khi hub tự đổi ngôn ngữ
-local REVERSE_VI = {}
-local REVERSE_ID = {}
-for k, v in pairs(EXACT_MATCH_VI) do
-    if not REVERSE_VI[v] then REVERSE_VI[v] = k end
-end
-for k, v in pairs(EXACT_MATCH_ID) do
-    if not REVERSE_ID[v] then REVERSE_ID[v] = k end
-end
-
-local function recoverEnglishOriginal(txt)
-    if not txt or txt == "" then return txt end
-    return REVERSE_VI[txt] or REVERSE_ID[txt] or txt
-end
-
 local function translateStatusAction(cleanEn)
     if not cleanEn or cleanEn == "" then
         if currentLanguage == "ID" then return "Menganggur" end
@@ -1236,11 +910,11 @@ local function translateStatusAction(cleanEn)
         if trimmed:lower() == "idle" or trimmed == "Menganggur" then return "Menganggur" end
         local cacheKey = "STATUS_ID|" .. trimmed
         if FastCache[cacheKey] then return FastCache[cacheKey] end
-        if EXACT_MATCH_ID[trimmed] then setCache(cacheKey, EXACT_MATCH_ID[trimmed]); return EXACT_MATCH_ID[trimmed] end
+        if EXACT_MATCH_ID[trimmed] then FastCache[cacheKey] = EXACT_MATCH_ID[trimmed]; return EXACT_MATCH_ID[trimmed] end
         for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
             if trimmed:find(item.pat) then
                 local out = trimmed:gsub(item.pat, item.rep)
-                setCache(cacheKey, out); return out
+                FastCache[cacheKey] = out; return out
             end
         end
         local result = trimmed
@@ -1249,17 +923,17 @@ local function translateStatusAction(cleanEn)
                 result = idPrefix .. result:sub(#engPrefix + 1); break
             end
         end
-        setCache(cacheKey, result); return result
+        FastCache[cacheKey] = result; return result
     end
     -- Vietnamese branch
     if trimmed:lower() == "idle" or trimmed == "Đang rảnh" then return "Đang rảnh" end
     local cacheKey = "STATUS_VI|" .. trimmed
     if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if EXACT_MATCH_VI[trimmed] then setCache(cacheKey, EXACT_MATCH_VI[trimmed]); return EXACT_MATCH_VI[trimmed] end
+    if EXACT_MATCH_VI[trimmed] then FastCache[cacheKey] = EXACT_MATCH_VI[trimmed]; return EXACT_MATCH_VI[trimmed] end
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if trimmed:find(item.pat) then
             local out = trimmed:gsub(item.pat, item.rep)
-            setCache(cacheKey, out); return out
+            FastCache[cacheKey] = out; return out
         end
     end
     local result = trimmed
@@ -1269,7 +943,7 @@ local function translateStatusAction(cleanEn)
         end
     end
     result = result:gsub(" home$", " về nhà"):gsub(" to safe zone$", " về vùng an toàn"):gsub(" to base$", " về căn cứ")
-    setCache(cacheKey, result); return result
+    FastCache[cacheKey] = result; return result
 end
 
 local function translateTLNText(raw)
@@ -1278,47 +952,47 @@ local function translateTLNText(raw)
     if FastCache[cacheKey] then return FastCache[cacheKey] end
     if raw:find("Venyx SAE") then raw = raw:gsub("Venyx SAE", "TLN SAE")
     elseif raw == "VENYX" then raw = NEW_TITLE end
-    if currentLanguage == "EN" then setCache(cacheKey, raw); return raw end
+    if currentLanguage == "EN" then FastCache[cacheKey] = raw; return raw end
     local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
     -- Indonesian branch
     if currentLanguage == "ID" then
         if EXACT_MATCH_ID[normalized] then
-            local out = EXACT_MATCH_ID[normalized]; setCache(cacheKey, out); return out
+            local out = EXACT_MATCH_ID[normalized]; FastCache[cacheKey] = out; return out
         end
         local result = normalized
         for _, item in ipairs(DYNAMIC_PATTERNS_ID) do
             if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
+                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
             end
         end
         for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
             if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
+                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
             end
         end
-        setCache(cacheKey, raw); return raw
+        FastCache[cacheKey] = raw; return raw
     end
     -- Vietnamese branch
     if EXACT_MATCH_VI[normalized] then
-        local out = EXACT_MATCH_VI[normalized]; setCache(cacheKey, out); return out
+        local out = EXACT_MATCH_VI[normalized]; FastCache[cacheKey] = out; return out
     end
     -- Prefix symbol detection (e.g. "🔥 Auto steal")
     local prefix, wordPart = normalized:match("^([^%w%s]+%s*)(.+)$")
     if prefix and wordPart and EXACT_MATCH_VI[wordPart] then
-        local out = prefix .. EXACT_MATCH_VI[wordPart]; setCache(cacheKey, out); return out
+        local out = prefix .. EXACT_MATCH_VI[wordPart]; FastCache[cacheKey] = out; return out
     end
     local result = normalized
     for _, item in ipairs(DYNAMIC_PATTERNS_VI) do
         if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
+            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
         end
     end
     for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
         if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); setCache(cacheKey, result); return result
+            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
         end
     end
-    setCache(cacheKey, raw); return raw
+    FastCache[cacheKey] = raw; return raw
 end
 
 local function applyElementTranslation(inst)
@@ -1334,24 +1008,13 @@ local function applyElementTranslation(inst)
     local rawText = inst.Text
     if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
     local original = inst:GetAttribute("OrigRawText")
-    if not original then
-        -- Nếu text đang hiện là bản dịch VI/ID, phục hồi về tiếng Anh gốc
-        original = recoverEnglishOriginal(rawText)
-        inst:SetAttribute("OrigRawText", original)
-    end
+    if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
     local mapped = translateTLNText(original)
     if inst.Text ~= mapped then
-        -- [FIX] Synchronous retry: VenyxHub có thể đổi text lại ngay trong lúc set
-        -- task.defer quá chậm → VenyxHub win. Retry đồng bộ 3 lần để chắc thắng.
         inst:SetAttribute("__IsTranslating", true)
         inst:SetAttribute("__LastTranslated", mapped)
-        for _try = 1, 3 do
-            pcall(function() inst.Text = mapped end)
-            if inst.Text == mapped then break end
-            -- VenyxHub reverted synchronously → retry immediately
-        end
-        -- Clear đồng bộ, KHÔNG defer: nếu defer thì frame tiếp theo VenyxHub update → ta mất
-        inst:SetAttribute("__IsTranslating", false)
+        pcall(function() inst.Text = mapped end)
+        task.defer(function() inst:SetAttribute("__IsTranslating", false) end)
     end
 end
 
@@ -1362,40 +1025,21 @@ local function hookTextForTranslation(inst)
     applyElementTranslation(inst)
     if inst:GetAttribute("__TransHooked") then return end
     inst:SetAttribute("__TransHooked", true)
-    if #TrackedTexts < 400 then table.insert(TrackedTexts, inst) end  -- [LAGFIX] cap 400: chilli finder rows không phình bảng
+    table.insert(TrackedTexts, inst)
     inst:GetPropertyChangedSignal("Text"):Connect(function()
         if inst:GetAttribute("__IsTranslating") or inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") then return end
         if isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst); return end
         if inst.Text ~= inst:GetAttribute("__LastTranslated") then
-            -- [FIX] Phục hồi EN gốc trước khi lưu, tránh OrigRawText bị nhiễm bản dịch VI/ID
-            -- VenyxHub có thể ghi text bằng bản dịch của nó → không được dùng làm nguồn
-            local recovered = recoverEnglishOriginal(inst.Text)
-            inst:SetAttribute("OrigRawText", recovered)
-            applyElementTranslation(inst)
+            inst:SetAttribute("OrigRawText", inst.Text); applyElementTranslation(inst)
         end
     end)
 end
 
 local function refreshAllTranslations()
-    -- [FIX] Dùng lại task.wait đồng bộ: task.defer chạy SAU Heartbeat VenyxHub
-    -- → VenyxHub ghi đè translation ngay trước khi deferred task chạy → ta thua.
-    -- task.wait() yield rồi resume CÙNG frame cycle → ta thắng cuộc chiến.
-    local n = #TrackedTexts
-    local i = 1
-    local batch = 0
-    while i <= n do
+    for i = #TrackedTexts, 1, -1 do
         local el = TrackedTexts[i]
-        if el and el.Parent then
-            pcall(applyElementTranslation, el)
-            i = i + 1
-            batch = batch + 1
-            -- Yield mỗi 30 element để không block quá lâu (giảm lag từ 50→30)
-            if batch >= 30 then batch = 0; task.wait() end
-        else
-            TrackedTexts[i] = TrackedTexts[n]
-            TrackedTexts[n] = nil
-            n = n - 1
-        end
+        if el and el.Parent then applyElementTranslation(el)
+        else table.remove(TrackedTexts, i) end
     end
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
@@ -1431,58 +1075,39 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
 
-    -- [FIX] Lưu nút gốc VenyxHub TRƯỚC khi ẩn pill
-    -- Dùng firesignal để VenyxHub tự xử lý ngôn ngữ của nó → tránh chiến text
-    local _vxBtn = {VI=nil, EN=nil, ID=nil}
-    for _, child in ipairs(pill:GetChildren()) do
-        if child:IsA("TextButton") then
-            local t = (child.Text or ""):lower()
-            if t:find("vi") or t:find("vi") then _vxBtn.VI = child
-            elseif t:find("en") or t:find("eng") then _vxBtn.EN = child
-            elseif t:find("in") or t:find("id") then _vxBtn.ID = child
-            end
-        end
+    pill.BackgroundColor3 = ISLAND_BLACK_BG
+    pill.BackgroundTransparency = 0
+    pill.Size = UDim2.new(0, 300, 0, 30)
+    pill.AutomaticSize = Enum.AutomaticSize.None
+    pill.Parent = tlnGui
+    pill.AnchorPoint = Vector2.new(0.5, 0)
+    pill.Position = UDim2.new(0.5, 0, 0, 8)
+    pill.ZIndex = 9999
+    pill.Active = true
+    pill.ClipsDescendants = false
+    if not pill:GetAttribute("__BlackBgLocked") then
+        pill:SetAttribute("__BlackBgLocked", true)
+        pill:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+            if pill.BackgroundColor3 ~= ISLAND_BLACK_BG then pill.BackgroundColor3 = ISLAND_BLACK_BG end
+        end)
+        pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+            if pill.BackgroundTransparency ~= 0 then pill.BackgroundTransparency = 0 end
+        end)
+        pill:GetPropertyChangedSignal("Size"):Connect(function()
+            if pill.Size ~= UDim2.new(0, 300, 0, 30) then pill.Size = UDim2.new(0, 300, 0, 30) end
+        end)
     end
-    -- Expose cho setLanguage dùng
-    _G.__TLN_VxBtn = _vxBtn
 
-    -- Ẩn pill gốc hoàn toàn - giữ Active=true để firesignal vẫn hoạt động
-    pill.BackgroundTransparency = 1
-    pill.Size = UDim2.new(0, 0, 0, 0)
-    -- KHÔNG set Active=false: firesignal cần button còn active
-    pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-        if pill.BackgroundTransparency ~= 1 then pill.BackgroundTransparency = 1 end
-    end)
+    local pillCorner = pill:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
+    pillCorner.CornerRadius = UDim.new(1, 0); pillCorner.Parent = pill
 
-    -- Tạo frame riêng hoàn toàn độc lập, không bị VenyxHub can thiệp
-    local langBar = tlnGui:FindFirstChild("TLNLangBar")
-    if langBar then langBar:Destroy() end
-    langBar = Instance.new("Frame")
-    langBar.Name       = "TLNLangBar"
-    langBar.Size       = UDim2.new(0, 330, 0, 30)
-    langBar.Position   = UDim2.new(0.5, 0, 0, 8)
-    langBar.AnchorPoint = Vector2.new(0.5, 0)
-    langBar.BackgroundColor3 = ISLAND_BLACK_BG
-    langBar.BackgroundTransparency = 0
-    langBar.BorderSizePixel = 0
-    langBar.ZIndex     = 9999
-    langBar.ClipsDescendants = false
-    langBar.Active     = true
-    langBar.Parent     = tlnGui
-
-    local lbCorner = Instance.new("UICorner")
-    lbCorner.CornerRadius = UDim.new(1, 0); lbCorner.Parent = langBar
-
-    local lbStroke = Instance.new("UIStroke")
-    lbStroke.Name = "IslandStroke"; lbStroke.Thickness = 1.6
-    lbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    lbStroke.Color = Color3.fromRGB(255, 255, 255); lbStroke.Parent = langBar
-    local strokeGrad = Instance.new("UIGradient")
-    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = lbStroke
+    local pillStroke = pill:FindFirstChild("IslandStroke") or Instance.new("UIStroke")
+    pillStroke.Name = "IslandStroke"; pillStroke.Thickness = 1.6
+    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    pillStroke.Color = Color3.fromRGB(255, 255, 255); pillStroke.Parent = pill
+    local strokeGrad = pillStroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = pillStroke
     table.insert(ActiveGradients, strokeGrad)
-
-    -- alias để code bên dưới dùng chung
-    local pill = langBar
 
     local LangSlider = Instance.new("Frame")
     LangSlider.Name = "LangSlider"
@@ -1526,52 +1151,8 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
         BtnVI.TextColor3 = (lang == "VI") and LIT or DIM
         BtnEN.TextColor3 = (lang == "EN") and LIT or DIM
         BtnID.TextColor3 = (lang == "ID") and LIT or DIM
-
-        -- [FIX] Fire nút gốc VenyxHub để nó tự dịch ngôn ngữ của nó
-        -- Cách này thắng chiến text vì VenyxHub không chiến với chính nó
-        task.spawn(function()
-            local vxBtns = _G.__TLN_VxBtn or {}
-            local target = vxBtns[lang]
-            if target then
-                -- firesignal: có ở Synapse/KRNL/Delta/Wave
-                pcall(function()
-                    if firesignal then firesignal(target.MouseButton1Click) end
-                end)
-                -- Fallback: dùng mouse simulation nếu có
-                pcall(function()
-                    if mouse1click then mouse1click(target) end
-                end)
-            end
-            -- Chờ VenyxHub cập nhật xong rồi apply thêm bản dịch của ta
-            task.wait(0.1)
-            refreshAllTranslations()
-        end)
+        refreshAllTranslations()
     end
-
-    -- [FIX] Vòng lặp sửa định kỳ: VenyxHub có thể ghi đè sau khi ta dịch
-    -- Chạy mỗi 0.5s, chỉ sửa những element bị sai (hầu hết frame không có gì để sửa)
-    task.spawn(function()
-        while true do
-            task.wait(0.5)
-            if currentLanguage ~= "VI" then
-                -- Chỉ cần sửa khi không phải VI (VI là ngôn ngữ gốc VenyxHub)
-                local n = #TrackedTexts
-                for i = n, 1, -1 do
-                    local el = TrackedTexts[i]
-                    if el and el.Parent then
-                        local last = el:GetAttribute("__LastTranslated")
-                        if last and el.Text ~= last then
-                            pcall(applyElementTranslation, el)
-                        end
-                    else
-                        TrackedTexts[i] = TrackedTexts[n]
-                        TrackedTexts[n] = nil
-                        n = n - 1
-                    end
-                end
-            end
-        end
-    end)
 
     BtnVI.MouseButton1Click:Connect(function() setLanguage("VI") end)
     BtnEN.MouseButton1Click:Connect(function() setLanguage("EN") end)
@@ -1593,13 +1174,10 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
             if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
                 local delta = input.Position - dragStart
                 local cam = workspace.CurrentCamera
-                local screenW = cam and cam.ViewportSize.X or 800
-                local screenH = cam and cam.ViewportSize.Y or 600
-                -- pill rộng 300px, neo tại 50% → giới hạn offset để không ra ngoài màn hình
-                local halfPill = 169  -- 330/2 + 4px padding
-                local maxX     = math.floor(screenW / 2) - halfPill
-                local newX     = math.clamp(startPos.X.Offset + delta.X, -maxX, maxX)
-                local newY     = math.clamp(startPos.Y.Offset + delta.Y, 4, screenH - 40)
+                local maxX = cam and cam.ViewportSize.X - 140 or 800
+                local maxY = cam and cam.ViewportSize.Y - 50 or 600
+                local newX = math.clamp(startPos.X.Offset + delta.X, -maxX/2, maxX/2)
+                local newY = math.clamp(startPos.Y.Offset + delta.Y, 4, maxY)
                 moveFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
             end
         end)
@@ -2149,15 +1727,50 @@ task.spawn(function()
                 d:GetPropertyChangedSignal("Active"):Connect(function()
                     if not d.Active then d.Active = true end
                 end)
-                -- Handler riêng: tìm JobId rồi teleport, bypass plan check
+                -- [CRACK] Handler: lấy jobId từ API response đã parse, bypass plan check hoàn toàn
                 d.MouseButton1Click:Connect(function()
-                    local jobId = findJobId(d)
+                    local jobId = nil
+
+                    -- 1) Ưu tiên: jobId từ API response (chính xác nhất)
+                    local cfIds = _G.__CF_JobIds or {}
+                    if #cfIds > 0 then
+                        -- Tìm row index của nút này trong danh sách rows
+                        local rowIdx = nil
+                        local rowFrame = d.Parent  -- frame chứa nút Join
+                        if rowFrame then
+                            local listFrame = rowFrame.Parent  -- frame chứa tất cả rows
+                            if listFrame then
+                                local idx = 0
+                                for _, sib in ipairs(listFrame:GetChildren()) do
+                                    if sib:IsA("GuiObject") then
+                                        idx = idx + 1
+                                        if sib == rowFrame then rowIdx = idx; break end
+                                    end
+                                end
+                            end
+                        end
+                        -- Nếu tìm được index → dùng jobId tương ứng
+                        if rowIdx and cfIds[rowIdx] then
+                            jobId = cfIds[rowIdx]
+                        else
+                            -- Fallback: dùng jobId mới nhất (1 server list đang hiển thị)
+                            jobId = cfIds[1]
+                        end
+                    end
+
+                    -- 2) Fallback: tìm trong hierarchy GUI
+                    if not jobId then jobId = findJobId(d) end
+
+                    -- 3) Teleport
                     if jobId then
                         pcall(function()
                             TeleportService:TeleportToPlaceInstance(
                                 game.PlaceId, jobId, Players.LocalPlayer
                             )
                         end)
+                    else
+                        -- 4) Last resort: để CF tự xử lý (plan đã được spoof → CF join được)
+                        -- (original handler vẫn fire sau handler của ta)
                     end
                 end)
             end
