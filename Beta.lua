@@ -199,17 +199,17 @@ local function spoofJsonText(s)
     return s
 end
 
--- ── 0-E. HTTP HOOKS (fallback text spoof + UUID harvest) ─────────────────────
-local function wrapHttpResponse(url, body)
-    if type(url) ~= "string" then return body end
-    local isCF = url:find("chillihub") or url:find("chilli") or url:find("finder")
-    if not isCF then return body end
-    if type(body) == "string" then
+-- ── 0-E. HTTP HOOKS (UUID harvest ONLY — không modify body) ──────────────────
+-- [ANTI-TAMPER FIX] CF type-1 detection: fingerprint raw body trước khi JSONDecode
+-- Nếu body bị modify (dù 1 byte) → signature mismatch → "Tampering detected (type 1)" → blacklist
+-- Solution: HTTP hooks CHỈ đọc body để harvest UUID jobIds, KHÔNG bao giờ thay đổi nó
+-- JSONDecode hook (0-B) là vector spoof duy nhất — hoạt động sau khi CF verify xong signature
+
+local function harvestJobIds(url, body)
+    if type(url) == "string" and type(body) == "string"
+    and (url:find("chillihub") or url:find("chilli") or url:find("finder")) then
         extractCFJobIds(body)
-        -- Text spoof chỉ fallback; JSONDecode hook đã lo primary
-        return spoofJsonText(body)
     end
-    return body
 end
 
 pcall(function()
@@ -217,7 +217,8 @@ pcall(function()
     game.HttpGet = function(self, url, ...)
         local ok, res = pcall(_origHG, self, url, ...)
         if not ok then return "" end
-        return wrapHttpResponse(url, res)
+        harvestJobIds(url, res)
+        return res  -- trả nguyên xi, không modify
     end
 end)
 pcall(function()
@@ -226,7 +227,8 @@ pcall(function()
     _HS2.GetAsync = function(self, url, ...)
         local ok, res = pcall(_origGA, self, url, ...)
         if not ok then return "" end
-        return wrapHttpResponse(url, res)
+        harvestJobIds(url, res)
+        return res  -- trả nguyên xi
     end
 end)
 pcall(function()
@@ -236,57 +238,30 @@ pcall(function()
         local ok, res = pcall(_origRA, self, opts, ...)
         if ok and type(res) == "table" then
             local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
-            if type(res.Body) == "string" then res.Body = wrapHttpResponse(url, res.Body) end
+            harvestJobIds(url, res.Body or "")
+            -- KHÔNG modify res.Body
         end
         return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
     end
 end)
-local function hookRequestFn(fn)
+local function hookRequestFnReadOnly(fn)
     return function(opts, ...)
         local ok, res = pcall(fn, opts, ...)
         if ok and type(res) == "table" then
             local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
-            if type(res.Body)  == "string" then res.Body  = wrapHttpResponse(url, res.Body)  end
-            if type(res.body)  == "string" then res.body  = wrapHttpResponse(url, res.body)  end
+            harvestJobIds(url, res.Body or res.body or "")
+            -- KHÔNG modify body
         end
         return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
     end
 end
-pcall(function() if type(request)      == "function" then request      = hookRequestFn(request)      end end)
-pcall(function() if type(http_request) == "function" then http_request = hookRequestFn(http_request) end end)
-pcall(function() if syn and type(syn.request) == "function" then syn.request = hookRequestFn(syn.request) end end)
+pcall(function() if type(request)      == "function" then request      = hookRequestFnReadOnly(request)      end end)
+pcall(function() if type(http_request) == "function" then http_request = hookRequestFnReadOnly(http_request) end end)
+pcall(function() if syn and type(syn.request) == "function" then syn.request = hookRequestFnReadOnly(syn.request) end end)
 
--- ── 0-F. LOADSTRING HOOK: intercept CF auth module khi nó được load ──────────
--- CF có thể load auth logic từ server qua loadstring(HttpGet(...))
--- Hook loadstring → nếu chunk chứa dấu hiệu CF auth → inject upvalue patch
-pcall(function()
-    if type(loadstring) ~= "function" then return end
-    local _origLS = loadstring
-    loadstring = function(src, chunkname, ...)
-        local fn, err = _origLS(src, chunkname, ...)
-        if type(fn) ~= "function" then return fn, err end
-        -- Chỉ wrap nếu source có dấu hiệu là CF auth/plan module
-        if type(src) == "string" and (
-            src:find("chillihub") or src:find("ChilliFinder") or src:find("booking")
-            or src:find("has_booking") or src:find("plan_check") or src:find("auth_check")
-        ) then
-            return function(...)
-                -- Chạy module gốc
-                local results = table.pack(pcall(fn, ...))
-                if not results[1] then
-                    -- Module lỗi (thường do auth fail) → trả fake success table
-                    return {authorized=true, plan="pro_max", booking_active=true, active=true}
-                end
-                -- Module thành công → spoof return value nếu là table
-                if type(results[2]) == "table" then
-                    deepSpoofTable(results[2], 0)
-                end
-                return table.unpack(results, 2)
-            end, nil
-        end
-        return fn, err
-    end
-end)
+-- ── 0-F. (đã xóa) loadstring hook ───────────────────────────────────────────
+-- Removed: CF detect aggressive loadstring wrapping → triggers "type 1" secondary path
+-- JSONDecode hook (0-B) đủ để bypass auth mà không cần intercept source loading
 
 -- ── 0-G. BLOCK PURCHASE REDIRECTS ─────────────────────────────────────────────
 pcall(function()
