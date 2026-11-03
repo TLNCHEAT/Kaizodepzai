@@ -1140,11 +1140,9 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     statusLbl:SetAttribute("__IslandDone", true)
     GlobalRefreshIslandStatus = function() end
 
-    -- Ẩn statusLbl gốc (Idle/Nhân Rồi/Menganggur)
+    -- Ẩn statusLbl gốc, KHÔNG đụng đến pill (hub có thể lock size/pos của pill)
     statusLbl.Text = ""
     statusLbl.TextTransparency = 1
-    statusLbl.Size = UDim2.new(0, 0, 0, 0)
-    statusLbl.AutomaticSize = Enum.AutomaticSize.None
     statusLbl.Active = false
     statusLbl:GetPropertyChangedSignal("Text"):Connect(function()
         if statusLbl.Text ~= "" and not statusLbl:GetAttribute("__Updating") then
@@ -1154,113 +1152,106 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
         end
     end)
 
-    -- Dọn rác trong pill cũ
-    for _, child in ipairs(pill:GetChildren()) do
-        if child:IsA("UIGradient") then child:Destroy() end
-    end
-    for _, n in ipairs({"IslandClickHitbox","IslandExpandHint"}) do
-        local c = pill:FindFirstChild(n); if c then c:Destroy() end
-    end
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
-    -- Xóa các nút VI/EN/ID cũ và slider
-    for _, child in ipairs(pill:GetChildren()) do
-        if child:IsA("TextButton") or child:IsA("Frame") or child:IsA("UIStroke")
-        or child:IsA("UICorner") or child:IsA("UIPadding") then
-            child:Destroy()
-        end
-    end
 
-    -- ── Language names cho từng chế độ ──────────────────────────────────────
-    local LANG_NAMES = {
-        VI = "Ngôn ngữ: Tiếng Việt",
-        EN = "Language: English",
-        ID = "Bahasa: Indonesia",
+    -- ── Language config ──────────────────────────────────────────────────────
+    local LANG_LABELS = {
+        VI = "🇻🇳 Ngôn ngữ: Tiếng Việt",
+        EN = "🌐 Language: English",
+        ID = "🇮🇩 Bahasa: Indonesia",
     }
-    local LANG_ICONS = { VI = "🇻🇳", EN = "🌐", ID = "🇮🇩" }
-    local CYCLE = { VI = "EN", EN = "ID", ID = "VI" }
+    local CYCLE = { VI="EN", EN="ID", ID="VI" }
 
-    -- ── Restyle pill → 1 nút nhỏ gọn trong navbar hub ────────────────────────
-    -- GIỮ NGUYÊN PARENT (không reparent sang tlnGui)
-    -- → nút nằm ngay trong thanh navbar của hub, giống các nút khác
-    pill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    pill.BackgroundTransparency = 0.88
-    pill.AutomaticSize = Enum.AutomaticSize.XY
-    pill.Size = UDim2.new(0, 0, 0, 0)   -- auto từ content
-    pill.Active = true
-    pill.ClipsDescendants = false
+    -- ── Tạo nút MỚI trong title bar (pill.Parent) ────────────────────────────
+    -- KHÔNG restyle pill cũ vì hub sẽ reset nó
+    -- Inject thẳng vào frame cha của pill → nút nằm trong thanh tiêu đề hub
+    local headerFrame = pill.Parent
+    if not (headerFrame and headerFrame:IsA("GuiObject")) then return end
 
-    local pillCorner = Instance.new("UICorner")
-    pillCorner.CornerRadius = UDim.new(0, 5)
-    pillCorner.Parent = pill
+    -- Xóa nút cũ nếu tồn tại (re-inject)
+    local old = headerFrame:FindFirstChild("TLNLangContainer")
+    if old then old:Destroy() end
 
-    local pillPad = Instance.new("UIPadding")
-    pillPad.PaddingLeft   = UDim.new(0, 8)
-    pillPad.PaddingRight  = UDim.new(0, 8)
-    pillPad.PaddingTop    = UDim.new(0, 3)
-    pillPad.PaddingBottom = UDim.new(0, 3)
-    pillPad.Parent = pill
+    -- Container chứa nút ngôn ngữ
+    local langW = 152  -- width cố định đủ chứa text
+    local langH = 24
 
-    -- Rainbow stroke (giống các nút đặc trưng TLN)
-    local pillStroke = Instance.new("UIStroke")
-    pillStroke.Name           = "LangStroke"
-    pillStroke.Thickness      = 1
-    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    pillStroke.Color          = Color3.fromRGB(255, 255, 255)
-    pillStroke.Parent         = pill
-    local sg = Instance.new("UIGradient")
-    sg.Color  = COLOR_SEQ_RAINBOW
-    sg.Parent = pillStroke
-    table.insert(ActiveGradients, sg)
+    local langContainer = Instance.new("Frame")
+    langContainer.Name                = "TLNLangContainer"
+    langContainer.Size                = UDim2.new(0, langW, 0, langH)
+    langContainer.BackgroundColor3    = Color3.fromRGB(255, 255, 255)
+    langContainer.BackgroundTransparency = 0.86
+    langContainer.ClipsDescendants    = false
+    langContainer.ZIndex              = pill.ZIndex + 5
+    langContainer.Visible             = true
 
-    -- Nút ngôn ngữ chính
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(0, 5); cc.Parent = langContainer
+
+    local cs = Instance.new("UIStroke")
+    cs.Name = "LangStroke"; cs.Thickness = 1
+    cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    cs.Parent = langContainer
+    local csg = Instance.new("UIGradient")
+    csg.Color = COLOR_SEQ_RAINBOW; csg.Parent = cs
+    table.insert(ActiveGradients, csg)
+
+    -- Nút bên trong
     local langBtn = Instance.new("TextButton")
     langBtn.Name               = "TLNLangBtn"
+    langBtn.Size               = UDim2.new(1, 0, 1, 0)
     langBtn.BackgroundTransparency = 1
-    langBtn.Size               = UDim2.new(0, 0, 0, 0)
-    langBtn.AutomaticSize      = Enum.AutomaticSize.XY
-    langBtn.Text               = LANG_ICONS[currentLanguage].." "..LANG_NAMES[currentLanguage]
+    langBtn.Text               = LANG_LABELS[currentLanguage]
     langBtn.Font               = Enum.Font.GothamMedium
     langBtn.TextSize           = 11
-    langBtn.TextColor3         = Color3.fromRGB(255, 255, 255)
+    langBtn.TextColor3         = Color3.fromRGB(235, 238, 255)
     langBtn.TextXAlignment     = Enum.TextXAlignment.Center
-    langBtn.ZIndex             = pill.ZIndex + 1
-    langBtn.AutoButtonColor    = true
-    langBtn.Parent             = pill
+    langBtn.AutoButtonColor    = false
+    langBtn.ZIndex             = langContainer.ZIndex + 1
+    langBtn.Parent             = langContainer
 
-    -- Hover effect
+    -- Hover
     langBtn.MouseEnter:Connect(function()
-        TweenService:Create(pill, TweenInfo.new(0.12), {
-            BackgroundTransparency = 0.72
-        }):Play()
+        langContainer.BackgroundTransparency = 0.68
     end)
     langBtn.MouseLeave:Connect(function()
-        TweenService:Create(pill, TweenInfo.new(0.12), {
-            BackgroundTransparency = 0.88
-        }):Play()
+        langContainer.BackgroundTransparency = 0.86
     end)
 
     -- ── setLanguage ──────────────────────────────────────────────────────────
     local function setLanguage(lang)
         if currentLanguage == lang then return end
         currentLanguage = lang
-        langBtn.Text = LANG_ICONS[lang].." "..LANG_NAMES[lang]
-        -- Tween nhỏ trên nút để báo đã đổi
-        TweenService:Create(pill, TweenInfo.new(0.08), {
-            BackgroundTransparency = 0.55
-        }):Play()
-        task.delay(0.2, function()
-            TweenService:Create(pill, TweenInfo.new(0.2), {
-                BackgroundTransparency = 0.88
-            }):Play()
+        langBtn.Text = LANG_LABELS[lang]
+        langContainer.BackgroundTransparency = 0.45
+        task.delay(0.18, function()
+            langContainer.BackgroundTransparency = 0.86
         end)
         refreshAllTranslations()
     end
 
-    -- Click → cycle VI → EN → ID → VI
     langBtn.MouseButton1Click:Connect(function()
         setLanguage(CYCLE[currentLanguage] or "VI")
     end)
+
+    -- ── Đặt vị trí: ngay bên phải pill (title bar) ──────────────────────────
+    -- Dùng task.delay để chờ AbsolutePosition được tính xong
+    local function reposition()
+        if not (pill and pill.Parent) then return end
+        local hdrAbs  = headerFrame.AbsolutePosition
+        local pillAbs = pill.AbsolutePosition
+        local pillSz  = pill.AbsoluteSize
+        local x = pillAbs.X + pillSz.X + 6 - hdrAbs.X
+        local y = pillAbs.Y - hdrAbs.Y + (pillSz.Y - langH) / 2
+        langContainer.Position = UDim2.new(0, x, 0, y)
+        langContainer.Parent = headerFrame  -- parent SAU khi position đã tính
+    end
+
+    -- Thử ngay sau 0.35s (đảm bảo hub đã render xong)
+    task.delay(0.35, reposition)
+    -- Retry thêm 1 lần nếu hub load chậm
+    task.delay(1.0,  reposition)
 end
 
 -- ==================== 6. LOGO TRÒN ====================
