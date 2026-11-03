@@ -1152,6 +1152,34 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
         end
     end)
 
+    -- [BUG FIX] Ẩn toàn bộ nội dung pill (cờ quốc gia, icon, bg VenyxHub)
+    -- Trước đây chỉ ẩn statusLbl.Text → cờ 🇻🇳 gốc của hub vẫn hiện dù đã chuyển ngôn ngữ
+    pcall(function()
+        pill.BackgroundTransparency = 1
+        pill.BorderSizePixel        = 0
+        for _, child in ipairs(pill:GetChildren()) do
+            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
+                child.ImageTransparency      = 1
+                child.BackgroundTransparency = 1
+            elseif child:IsA("TextLabel") or child:IsA("TextButton") then
+                if child ~= statusLbl then
+                    child.TextTransparency      = 1
+                    child.BackgroundTransparency = 1
+                end
+            elseif child:IsA("Frame") then
+                pcall(function() child.BackgroundTransparency = 1 end)
+            elseif child:IsA("UICorner") or child:IsA("UIStroke") or child:IsA("UIGradient") then
+                pcall(function() child.Visible = false end)
+            end
+        end
+        -- Lock: ngăn VenyxHub reset background pill về màu cũ
+        pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+            if pill.BackgroundTransparency ~= 1 then
+                pcall(function() pill.BackgroundTransparency = 1 end)
+            end
+        end)
+    end)
+
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
 
@@ -1244,6 +1272,11 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
         local pillSz  = pill.AbsoluteSize
         local x = pillAbs.X + pillSz.X + 6 - hdrAbs.X
         local y = pillAbs.Y - hdrAbs.Y + (pillSz.Y - langH) / 2
+        -- [BUG FIX] Clamp x để container không tràn ra ngoài header hoặc bị che
+        -- Trước đây x tính không giới hạn → header hẹp khiến nút bị clip sang bên kia
+        local headerW = headerFrame.AbsoluteSize.X
+        x = math.min(x, headerW - langW - 4)
+        x = math.max(x, 0)
         langContainer.Position = UDim2.new(0, x, 0, y)
         langContainer.Parent = headerFrame  -- parent SAU khi position đã tính
     end
