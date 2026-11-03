@@ -8,112 +8,208 @@ local CHILLI_LOGO_ID  = "rbxassetid://100224396235670"
 local LOGO_BG_COLOR   = Color3.fromRGB(5, 7, 15)
 local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
 
--- ==================== 0. HTTP HOOK SỚM (chạy đồng bộ trước khi VenyxHub load) ====================
--- [FIX] Phải hook TRƯỚC task.spawn VenyxHub để spoof plan Chilli Finder kịp lúc
-local function spoofJsonEarly(s)
-    if type(s) ~= "string" then return s end
-    -- Plan / tier
-    s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro_max"')
-    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro_max"')
-    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro_max"')
-    -- Booking / active
-    s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
-    s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
-    s = s:gsub('"active"%s*:%s*false',            '"active":true')
-    s = s:gsub('"is_active"%s*:%s*false',         '"is_active":true')
-    -- Auth / access
-    s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
-    s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
-    -- [FIX] Extra CF plan check fields
-    s = s:gsub('"is_premium"%s*:%s*false',        '"is_premium":true')
-    s = s:gsub('"premium"%s*:%s*false',           '"premium":true')
-    s = s:gsub('"is_pro"%s*:%s*false',            '"is_pro":true')
-    s = s:gsub('"pro"%s*:%s*false',               '"pro":true')
-    s = s:gsub('"is_subscribed"%s*:%s*false',     '"is_subscribed":true')
-    s = s:gsub('"subscribed"%s*:%s*false',        '"subscribed":true')
-    s = s:gsub('"subscription"%s*:%s*null',       '"subscription":"pro_max"')
-    s = s:gsub('"subscription"%s*:%s*"[a-z_%-]*"', '"subscription":"pro_max"')
-    -- [FIX] Login / session fields (Chilli Finder OAuth check)
-    s = s:gsub('"logged_in"%s*:%s*false',         '"logged_in":true')
-    s = s:gsub('"authenticated"%s*:%s*false',     '"authenticated":true')
-    s = s:gsub('"is_authenticated"%s*:%s*false',  '"is_authenticated":true')
-    s = s:gsub('"session_valid"%s*:%s*false',     '"session_valid":true')
-    s = s:gsub('"token_valid"%s*:%s*false',       '"token_valid":true')
-    s = s:gsub('"is_member"%s*:%s*false',         '"is_member":true')
-    s = s:gsub('"verified"%s*:%s*false',          '"verified":true')
-    -- [FIX v2] Capability / feature flags VenyxHub mới check
-    s = s:gsub('"enabled"%s*:%s*false',              '"enabled":true')
-    s = s:gsub('"is_enabled"%s*:%s*false',           '"is_enabled":true')
-    s = s:gsub('"allow"%s*:%s*false',                '"allow":true')
-    s = s:gsub('"allowed"%s*:%s*false',              '"allowed":true')
-    s = s:gsub('"access"%s*:%s*false',               '"access":true')
-    s = s:gsub('"can_steal"%s*:%s*false',            '"can_steal":true')
-    s = s:gsub('"can_farm"%s*:%s*false',             '"can_farm":true')
-    s = s:gsub('"can_use_pets"%s*:%s*false',         '"can_use_pets":true')
-    s = s:gsub('"pet_activity_enabled"%s*:%s*false', '"pet_activity_enabled":true')
-    s = s:gsub('"has_access_to"%s*:%s*false',        '"has_access_to":true')
-    -- [FIX v2] Plan level integers
-    s = s:gsub('"plan_id"%s*:%s*%d+',               '"plan_id":99')
-    s = s:gsub('"tier_id"%s*:%s*%d+',               '"tier_id":99')
-    s = s:gsub('"access_level"%s*:%s*%d+',          '"access_level":99')
-    -- [FIX v2] Feature arrays rỗng/null → full list
-    local FEAT = '["all","auto_steal","auto_farm","pets","race","lab","butterfly","wisp","star","admin"]'
-    s = s:gsub('"features"%s*:%s*%[%]',    '"features":' .. FEAT)
-    s = s:gsub('"features"%s*:%s*null',    '"features":' .. FEAT)
-    s = s:gsub('"permissions"%s*:%s*%[%]', '"permissions":["all"]')
-    s = s:gsub('"permissions"%s*:%s*null', '"permissions":["all"]')
-    s = s:gsub('"scopes"%s*:%s*%[%]',     '"scopes":["all"]')
-    s = s:gsub('"scopes"%s*:%s*null',     '"scopes":["all"]')
-    -- user null → fake object để CF không crash khi đọc user.id
-    s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro_max","tier":"pro_max","subscription":"pro_max"}')
-    -- [INFINITE TIME] Spoof tất cả field thời gian hết hạn → vô hạn (năm 2100)
-    -- [BUG FIX] Thêm spoof cho dạng ISO string "2024-01-01T..." bên cạnh số Unix
-    local ISO_FAR = "2100-01-01T00:00:00.000Z"
-    s = s:gsub('"expires_at"%s*:%s*"[^"]*"',   '"expires_at":"' .. ISO_FAR .. '"')
-    s = s:gsub('"expire_at"%s*:%s*"[^"]*"',    '"expire_at":"'  .. ISO_FAR .. '"')
-    s = s:gsub('"valid_until"%s*:%s*"[^"]*"',  '"valid_until":"' .. ISO_FAR .. '"')
-    s = s:gsub('"end_date"%s*:%s*"[^"]*"',     '"end_date":"'   .. ISO_FAR .. '"')
-    s = s:gsub('"end_time"%s*:%s*"[^"]*"',     '"end_time":"'   .. ISO_FAR .. '"')
-    local FAR = "4102444800"
-    s = s:gsub('"expires_at"%s*:%s*%d+',         '"expires_at":' .. FAR)
-    s = s:gsub('"expire_at"%s*:%s*%d+',          '"expire_at":' .. FAR)
-    s = s:gsub('"expired_at"%s*:%s*%d+',         '"expired_at":' .. FAR)
-    s = s:gsub('"valid_until"%s*:%s*%d+',        '"valid_until":' .. FAR)
-    s = s:gsub('"end_date"%s*:%s*%d+',           '"end_date":' .. FAR)
-    s = s:gsub('"end_time"%s*:%s*%d+',           '"end_time":' .. FAR)
-    s = s:gsub('"exp"%s*:%s*%d+',                '"exp":' .. FAR)
-    s = s:gsub('"expires_in"%s*:%s*%-?%d+',      '"expires_in":99999999')
-    s = s:gsub('"time_left"%s*:%s*%-?%d+',       '"time_left":99999999')
-    s = s:gsub('"time_remaining"%s*:%s*%-?%d+',  '"time_remaining":99999999')
-    s = s:gsub('"hours_left"%s*:%s*%-?%d+',      '"hours_left":99999')
-    s = s:gsub('"days_left"%s*:%s*%-?%d+',       '"days_left":99999')
-    s = s:gsub('"minutes_left"%s*:%s*%-?%d+',    '"minutes_left":99999999')
-    s = s:gsub('"seconds_left"%s*:%s*%-?%d+',    '"seconds_left":99999999')
-    s = s:gsub('"expired"%s*:%s*true',            '"expired":false')
-    s = s:gsub('"is_expired"%s*:%s*true',         '"is_expired":false')
-    s = s:gsub('"key_expired"%s*:%s*true',        '"key_expired":false')
-    return s
-end
--- [CRACK] Lưu jobIds từ server list API của Chilli Finder để teleport thẳng
-_G.__CF_JobIds      = {}  -- danh sách jobId theo thứ tự hiển thị
-_G.__CF_JobIds_tick = 0   -- thời điểm cập nhật gần nhất
+-- ==================== 0. CF BYPASS V2 (multi-vector: table-level + text fallback) ====================
+-- [V2] CF fix cũ: verify signature trên raw HTTP body → gsub text-spoof bị lộ → auth fail
+-- Approach mới:
+--   PRIMARY  → hook JSONDecode: raw string KHÔNG bị đụng (signature pass), spoof TABLE output
+--   SECONDARY → hook WebSocket (CF v2 có thể dùng WS thay HTTP polling)
+--   FALLBACK  → giữ text-spoof cho các endpoint không có signature check
+--   EXTRA     → hook loadstring để intercept CF auth module bytecode khi nó load
+
+-- ── 0-A. SHARED HELPERS ──────────────────────────────────────────────────────
+_G.__CF_JobIds      = {}
+_G.__CF_JobIds_tick = 0
 local UUID_RE = "(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)"
 local function extractCFJobIds(body)
     if type(body) ~= "string" then return end
-    -- Chỉ parse khi response có nhiều hơn 1 UUID (list servers, không phải plan check)
     local ids = {}
     for uuid in body:gmatch(UUID_RE) do
-        -- Bỏ qua jobId của server hiện tại và duplicate
         if uuid ~= game.JobId then
             local dup = false
-            for _, existing in ipairs(ids) do if existing == uuid then dup=true; break end end
+            for _, e in ipairs(ids) do if e == uuid then dup=true; break end end
             if not dup then table.insert(ids, uuid) end
         end
     end
-    if #ids >= 1 then
-        _G.__CF_JobIds      = ids
-        _G.__CF_JobIds_tick = tick()
+    if #ids >= 1 then _G.__CF_JobIds = ids; _G.__CF_JobIds_tick = tick() end
+end
+
+local FULL_FEAT = {"all","auto_steal","auto_farm","pets","race","lab","butterfly","wisp","star","admin","capture","minigame","wisp_quest","halloween","cursed_island","lab_eggs"}
+local FAR_UNIX  = 4102444800
+local FAR_ISO   = "2100-01-01T00:00:00.000Z"
+
+-- ── 0-B. PRIMARY: JSONDecode TABLE HOOK ──────────────────────────────────────
+-- CF verify signature trên raw string rồi mới JSONDecode → ta spoof SAU decode
+-- Raw string không bị modify → signature check pass → ta thấy decoded table → swap values
+local function deepSpoofTable(tbl, depth)
+    if type(tbl) ~= "table" or depth > 12 then return end
+    for k, v in pairs(tbl) do
+        if type(k) == "string" then
+            local kl = k:lower()
+            -- Plan / tier / subscription → "pro_max"
+            if kl == "plan" or kl == "tier" or kl == "subscription" then
+                if v == nil or v == false or v == "none" or v == "free"
+                or v == "no_plan" or v == "" or (type(v) == "string" and #v < 12) then
+                    rawset(tbl, k, "pro_max")
+                end
+            -- Boolean auth flags false → true
+            elseif (kl:find("active") or kl:find("authorized") or kl:find("has_access")
+                or kl:find("enabled") or kl:find("verified") or kl:find("logged")
+                or kl:find("premium") or kl:find("subscribed") or kl:find("booking")
+                or kl:find("allowed") or kl:find("can_") or kl:find("is_pro")
+                or kl:find("is_member") or kl:find("session_valid") or kl:find("token_valid")
+                or kl:find("authenticated")) and v == false then
+                rawset(tbl, k, true)
+            -- Expiry timestamps → far future
+            elseif kl:find("expir") or kl:find("valid_until") or kl:find("end_date")
+                or kl:find("end_time") or kl == "exp" then
+                if type(v) == "number" and v > 0 and v < 2000000000 then
+                    rawset(tbl, k, FAR_UNIX)
+                elseif type(v) == "string" and #v > 4 and not v:find("2100") then
+                    rawset(tbl, k, FAR_ISO)
+                end
+            -- "expired" true → false
+            elseif kl == "expired" or kl == "is_expired" or kl == "key_expired" then
+                if v == true then rawset(tbl, k, false) end
+            -- Time-left counters → big number
+            elseif kl:find("time_left") or kl:find("time_remaining") or kl:find("hours_left")
+                or kl:find("days_left") or kl:find("minutes_left") or kl:find("seconds_left")
+                or kl:find("expires_in") then
+                if type(v) == "number" and v < 9999999 then rawset(tbl, k, 99999999) end
+            -- Plan level integers → 99
+            elseif (kl == "plan_id" or kl == "tier_id" or kl == "access_level") and type(v) == "number" then
+                rawset(tbl, k, 99)
+            -- Feature/permission arrays rỗng/nil → full list
+            elseif kl == "features" or kl == "permissions" or kl == "scopes" then
+                if type(v) == "table" and #v == 0 then rawset(tbl, k, FULL_FEAT)
+                elseif v == nil or v == false then rawset(tbl, k, FULL_FEAT) end
+            -- user null / empty → fake object
+            elseif kl == "user" and (v == nil or v == false) then
+                rawset(tbl, k, {id=1,name="Player",plan="pro_max",tier="pro_max",subscription="pro_max"})
+            end
+        end
+        -- Recurse vào nested tables (kể cả array elements)
+        local nv = rawget(tbl, k)
+        if type(nv) == "table" then deepSpoofTable(nv, depth + 1) end
     end
+end
+
+pcall(function()
+    local HS = game:GetService("HttpService")
+    local _origDec = HS.JSONDecode
+    HS.JSONDecode = function(self, str, ...)
+        local ok, result = pcall(_origDec, self, str, ...)
+        if ok and type(result) == "table" then
+            -- Trích UUID trước khi spoof (để section 9 có jobIds)
+            if type(str) == "string" then extractCFJobIds(str) end
+            deepSpoofTable(result, 0)
+        end
+        return ok and result or {}
+    end
+end)
+
+-- ── 0-C. WEBSOCKET HOOK (CF v2 có thể dùng WS thay HTTP) ────────────────────
+-- Nếu CF switch sang websocket để bypass HTTP hook → ta intercept WS.OnMessage
+pcall(function()
+    if type(WebSocket) ~= "table" or type(WebSocket.connect) ~= "function" then return end
+    local _origWS = WebSocket.connect
+    WebSocket.connect = function(url, ...)
+        local ws, err = pcall(_origWS, url, ...)
+        if not ws then return end
+        local conn = err  -- pcall returns (true, result) → err = result here
+        -- Wrap OnMessage để spoof WS payload
+        if type(conn) == "table" and conn.OnMessage then
+            local origOm = conn.OnMessage
+            -- Không thể hook RBXScriptSignal trực tiếp, dùng proxy table
+            local proxy = {}
+            setmetatable(proxy, {
+                __index = function(_, k)
+                    if k == "Connect" or k == "connect" then
+                        return function(_, cb)
+                            return origOm:Connect(function(msg)
+                                if type(msg) == "string" then
+                                    local ok2, tbl = pcall(function()
+                                        return game:GetService("HttpService"):JSONDecode(msg)
+                                    end)
+                                    -- JSONDecode hook đã spoof tbl nếu ok2=true
+                                    -- Nếu không parse được JSON thì fallback trả raw
+                                    if ok2 and type(tbl) == "table" then
+                                        local ok3, spoofed = pcall(function()
+                                            return game:GetService("HttpService"):JSONEncode(tbl)
+                                        end)
+                                        if ok3 then msg = spoofed end
+                                    end
+                                end
+                                cb(msg)
+                            end)
+                        end
+                    end
+                    return rawget(proxy, k)
+                end
+            })
+            conn.OnMessage = proxy
+        end
+        return conn
+    end
+end)
+
+-- ── 0-D. FALLBACK: TEXT SPOOF cho endpoint không có signature check ───────────
+-- Giữ lại cho CF versions cũ hơn hoặc endpoint không verify
+local function spoofJsonText(s)
+    if type(s) ~= "string" then return s end
+    s = s:gsub('"plan"%s*:%s*null',                '"plan":"pro_max"')
+    s = s:gsub('"plan"%s*:%s*"[^"]*"',            '"plan":"pro_max"')
+    s = s:gsub('"tier"%s*:%s*"[^"]*"',            '"tier":"pro_max"')
+    s = s:gsub('"subscription"%s*:%s*null',        '"subscription":"pro_max"')
+    s = s:gsub('"subscription"%s*:%s*"[^"]*"',    '"subscription":"pro_max"')
+    local BOOLS = {
+        "has_booking","booking_active","active","is_active","authorized","has_access",
+        "is_premium","premium","is_pro","pro","is_subscribed","subscribed",
+        "logged_in","authenticated","is_authenticated","session_valid","token_valid",
+        "is_member","verified","enabled","is_enabled","allow","allowed","access",
+        "can_steal","can_farm","can_use_pets","pet_activity_enabled","has_access_to",
+    }
+    for _, f in ipairs(BOOLS) do
+        s = s:gsub('"' .. f .. '"%s*:%s*false', '"' .. f .. '":true')
+    end
+    local FEAT_STR = '["all","auto_steal","auto_farm","pets","race","lab","butterfly","wisp","star","admin"]'
+    s = s:gsub('"features"%s*:%s*%[%]',    '"features":' .. FEAT_STR)
+    s = s:gsub('"features"%s*:%s*null',    '"features":' .. FEAT_STR)
+    s = s:gsub('"permissions"%s*:%s*%[%]', '"permissions":["all"]')
+    s = s:gsub('"permissions"%s*:%s*null', '"permissions":["all"]')
+    s = s:gsub('"plan_id"%s*:%s*%d+',     '"plan_id":99')
+    s = s:gsub('"tier_id"%s*:%s*%d+',     '"tier_id":99')
+    s = s:gsub('"access_level"%s*:%s*%d+','"access_level":99')
+    s = s:gsub('"user"%s*:%s*null',        '"user":{"id":1,"name":"Player","plan":"pro_max","tier":"pro_max"}')
+    local ISO_FAR = "2100-01-01T00:00:00.000Z"
+    s = s:gsub('"expires_at"%s*:%s*"[^"]*"',  '"expires_at":"' .. ISO_FAR .. '"')
+    s = s:gsub('"expire_at"%s*:%s*"[^"]*"',   '"expire_at":"'  .. ISO_FAR .. '"')
+    s = s:gsub('"valid_until"%s*:%s*"[^"]*"', '"valid_until":"' .. ISO_FAR .. '"')
+    s = s:gsub('"end_date"%s*:%s*"[^"]*"',    '"end_date":"'   .. ISO_FAR .. '"')
+    local UX = "4102444800"
+    s = s:gsub('"expires_at"%s*:%s*%d+',      '"expires_at":' .. UX)
+    s = s:gsub('"expire_at"%s*:%s*%d+',       '"expire_at":' .. UX)
+    s = s:gsub('"expired_at"%s*:%s*%d+',      '"expired_at":' .. UX)
+    s = s:gsub('"valid_until"%s*:%s*%d+',     '"valid_until":' .. UX)
+    s = s:gsub('"exp"%s*:%s*%d+',             '"exp":' .. UX)
+    s = s:gsub('"expires_in"%s*:%s*%-?%d+',   '"expires_in":99999999')
+    s = s:gsub('"time_left"%s*:%s*%-?%d+',    '"time_left":99999999')
+    s = s:gsub('"expired"%s*:%s*true',         '"expired":false')
+    s = s:gsub('"is_expired"%s*:%s*true',      '"is_expired":false')
+    s = s:gsub('"key_expired"%s*:%s*true',     '"key_expired":false')
+    return s
+end
+
+-- ── 0-E. HTTP HOOKS (fallback text spoof + UUID harvest) ─────────────────────
+local function wrapHttpResponse(url, body)
+    if type(url) ~= "string" then return body end
+    local isCF = url:find("chillihub") or url:find("chilli") or url:find("finder")
+    if not isCF then return body end
+    if type(body) == "string" then
+        extractCFJobIds(body)
+        -- Text spoof chỉ fallback; JSONDecode hook đã lo primary
+        return spoofJsonText(body)
+    end
+    return body
 end
 
 pcall(function()
@@ -121,120 +217,96 @@ pcall(function()
     game.HttpGet = function(self, url, ...)
         local ok, res = pcall(_origHG, self, url, ...)
         if not ok then return "" end
-        if type(url) == "string" and url:find("chillihub") then
-            extractCFJobIds(res)   -- [CRACK] lưu jobIds trước khi spoof
-            return spoofJsonEarly(res)
-        end
-        return res
-    end
-end)
--- [FIX] Hook executor-level request() (Synapse / KRNL / Delta / Wave)
--- game:HttpGet dùng Roblox built-in; một số Chilli Finder module gọi thẳng request()
-pcall(function()
-    if type(request) == "function" then
-        local _origReqFn = request
-        request = function(opts, ...)
-            local ok, res = pcall(_origReqFn, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
+        return wrapHttpResponse(url, res)
     end
 end)
 pcall(function()
-    if syn and type(syn.request) == "function" then
-        local _s = syn.request
-        syn.request = function(opts, ...)
-            local ok, res = pcall(_s, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end
-end)
-pcall(function()
-    local _HS      = game:GetService("HttpService")
-    local _origReq = _HS.RequestAsync
-    _HS.RequestAsync = function(self, opts, ...)
-        local ok, res = pcall(_origReq, self, opts, ...)
-        if ok and type(res) == "table" then
-            local url = (type(opts) == "table" and opts.Url) or ""
-            if url:find("chillihub") then
-                extractCFJobIds(res.Body or "")  -- [CRACK]
-                res.Body = spoofJsonEarly(res.Body or "")
-            end
-            return res
-        end
-        return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-    end
-end)
-
--- [FIX] Hook http_request (Delta, Wave, Fluxus dùng tên này thay vì request)
-pcall(function()
-    if type(http_request) == "function" then
-        local _origHR = http_request
-        http_request = function(opts, ...)
-            local ok, res = pcall(_origHR, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end
-end)
--- [FIX] Hook HttpService:GetAsync (một số CF module dùng GetAsync thay HttpGet)
-pcall(function()
-    local _HS2    = game:GetService("HttpService")
+    local _HS2 = game:GetService("HttpService")
     local _origGA = _HS2.GetAsync
     _HS2.GetAsync = function(self, url, ...)
         local ok, res = pcall(_origGA, self, url, ...)
         if not ok then return "" end
-        if type(url) == "string" and url:find("chillihub") then
-            extractCFJobIds(res)
-            return spoofJsonEarly(res)
+        return wrapHttpResponse(url, res)
+    end
+end)
+pcall(function()
+    local _HS3 = game:GetService("HttpService")
+    local _origRA = _HS3.RequestAsync
+    _HS3.RequestAsync = function(self, opts, ...)
+        local ok, res = pcall(_origRA, self, opts, ...)
+        if ok and type(res) == "table" then
+            local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
+            if type(res.Body) == "string" then res.Body = wrapHttpResponse(url, res.Body) end
         end
-        return res
+        return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+    end
+end)
+local function hookRequestFn(fn)
+    return function(opts, ...)
+        local ok, res = pcall(fn, opts, ...)
+        if ok and type(res) == "table" then
+            local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
+            if type(res.Body)  == "string" then res.Body  = wrapHttpResponse(url, res.Body)  end
+            if type(res.body)  == "string" then res.body  = wrapHttpResponse(url, res.body)  end
+        end
+        return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
+    end
+end
+pcall(function() if type(request)      == "function" then request      = hookRequestFn(request)      end end)
+pcall(function() if type(http_request) == "function" then http_request = hookRequestFn(http_request) end end)
+pcall(function() if syn and type(syn.request) == "function" then syn.request = hookRequestFn(syn.request) end end)
+
+-- ── 0-F. LOADSTRING HOOK: intercept CF auth module khi nó được load ──────────
+-- CF có thể load auth logic từ server qua loadstring(HttpGet(...))
+-- Hook loadstring → nếu chunk chứa dấu hiệu CF auth → inject upvalue patch
+pcall(function()
+    if type(loadstring) ~= "function" then return end
+    local _origLS = loadstring
+    loadstring = function(src, chunkname, ...)
+        local fn, err = _origLS(src, chunkname, ...)
+        if type(fn) ~= "function" then return fn, err end
+        -- Chỉ wrap nếu source có dấu hiệu là CF auth/plan module
+        if type(src) == "string" and (
+            src:find("chillihub") or src:find("ChilliFinder") or src:find("booking")
+            or src:find("has_booking") or src:find("plan_check") or src:find("auth_check")
+        ) then
+            return function(...)
+                -- Chạy module gốc
+                local results = table.pack(pcall(fn, ...))
+                if not results[1] then
+                    -- Module lỗi (thường do auth fail) → trả fake success table
+                    return {authorized=true, plan="pro_max", booking_active=true, active=true}
+                end
+                -- Module thành công → spoof return value nếu là table
+                if type(results[2]) == "table" then
+                    deepSpoofTable(results[2], 0)
+                end
+                return table.unpack(results, 2)
+            end, nil
+        end
+        return fn, err
     end
 end)
 
--- [FIX] Block CF redirect → chillihub.pro/purchase (mở trình duyệt mua gói)
+-- ── 0-G. BLOCK PURCHASE REDIRECTS ─────────────────────────────────────────────
 pcall(function()
     local GuiService = game:GetService("GuiService")
     local _origOpen  = GuiService.OpenBrowserWindow
     GuiService.OpenBrowserWindow = function(self, url, ...)
-        if type(url) == "string" and (url:find("chillihub") or url:find("purchase") or url:find("subscribe") or url:find("upgrade")) then
-            -- Chặn redirect mua gói, không làm gì
-            return
-        end
+        if type(url) == "string" and (url:find("chillihub") or url:find("purchase")
+        or url:find("subscribe") or url:find("upgrade")) then return end
         return _origOpen(self, url, ...)
     end
 end)
--- [FIX] Block SetCore OpenBrowserWindow (Roblox CoreGui path)
 pcall(function()
     local StarterGui = game:GetService("StarterGui")
     local _origSC    = StarterGui.SetCore
     StarterGui.SetCore = function(self, coreType, ...)
         if coreType == "PromptSendFriendRequest" then return end
-        -- nếu là OpenBrowserWindow, lọc URL purchase
         if coreType == "OpenBrowserWindow" then
             local args = {...}
-            local url  = (type(args[1]) == "string" and args[1]) or (type(args[1]) == "table" and args[1].Url) or ""
+            local url  = (type(args[1]) == "string" and args[1])
+                      or (type(args[1]) == "table" and args[1].Url) or ""
             if url:find("chillihub") or url:find("purchase") then return end
         end
         return _origSC(self, coreType, ...)
@@ -1676,7 +1748,7 @@ task.spawn(function()
 
     -- ── A. HTTP HOOK đã chạy đồng bộ ở đầu file (section 0) ──────────────────
     -- [FIX] Không re-hook ở đây nữa để tránh double-wrap và race condition
-    -- spoofJsonEarly đã patch HttpGet + RequestAsync trước khi VenyxHub load
+    -- CF bypass V2 đã hook JSONDecode + HTTP + WS + loadstring trước khi VenyxHub load
 
     -- ── B. FIND JOB ID trong frame hierarchy khi nút Join được click ──────────
     local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
