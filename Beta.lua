@@ -1132,7 +1132,7 @@ local function refreshAllTranslations()
     if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
 end
 
--- ==================== 5. DYNAMIC ISLAND – 3 NÚT (VI | EN | ID) ====================
+-- ==================== 5. NÚT NGÔN NGỮ – NATIVE NAVBAR STYLE ====================
 local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     local pill = statusLbl.Parent
     if not (pill and pill:IsA("GuiObject")) then return end
@@ -1140,137 +1140,127 @@ local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
     statusLbl:SetAttribute("__IslandDone", true)
     GlobalRefreshIslandStatus = function() end
 
+    -- Ẩn statusLbl gốc (Idle/Nhân Rồi/Menganggur)
     statusLbl.Text = ""
     statusLbl.TextTransparency = 1
     statusLbl.Size = UDim2.new(0, 0, 0, 0)
     statusLbl.AutomaticSize = Enum.AutomaticSize.None
     statusLbl.Active = false
     statusLbl:GetPropertyChangedSignal("Text"):Connect(function()
-        if statusLbl.Text ~= "" then
+        if statusLbl.Text ~= "" and not statusLbl:GetAttribute("__Updating") then
             statusLbl:SetAttribute("__Updating", true)
             statusLbl.Text = ""
             task.defer(function() statusLbl:SetAttribute("__Updating", false) end)
         end
     end)
 
+    -- Dọn rác trong pill cũ
     for _, child in ipairs(pill:GetChildren()) do
         if child:IsA("UIGradient") then child:Destroy() end
     end
-    local badHitbox = pill:FindFirstChild("IslandClickHitbox")
-    if badHitbox then badHitbox:Destroy() end
-    local oldExpandHint = pill:FindFirstChild("IslandExpandHint")
-    if oldExpandHint then oldExpandHint:Destroy() end
+    for _, n in ipairs({"IslandClickHitbox","IslandExpandHint"}) do
+        local c = pill:FindFirstChild(n); if c then c:Destroy() end
+    end
     local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
     if oldExp then oldExp:Destroy() end
-
-    pill.BackgroundColor3 = ISLAND_BLACK_BG
-    pill.BackgroundTransparency = 0
-    pill.Size = UDim2.new(0, 300, 0, 30)
-    pill.AutomaticSize = Enum.AutomaticSize.None
-    pill.Parent = tlnGui
-    pill.AnchorPoint = Vector2.new(0.5, 0)
-    pill.Position = UDim2.new(0.5, 0, 0, 8)
-    pill.ZIndex = 9999
-    pill.Active = true
-    pill.ClipsDescendants = false
-    if not pill:GetAttribute("__BlackBgLocked") then
-        pill:SetAttribute("__BlackBgLocked", true)
-        pill:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-            if pill.BackgroundColor3 ~= ISLAND_BLACK_BG then pill.BackgroundColor3 = ISLAND_BLACK_BG end
-        end)
-        pill:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-            if pill.BackgroundTransparency ~= 0 then pill.BackgroundTransparency = 0 end
-        end)
-        pill:GetPropertyChangedSignal("Size"):Connect(function()
-            if pill.Size ~= UDim2.new(0, 300, 0, 30) then pill.Size = UDim2.new(0, 300, 0, 30) end
-        end)
+    -- Xóa các nút VI/EN/ID cũ và slider
+    for _, child in ipairs(pill:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("Frame") or child:IsA("UIStroke")
+        or child:IsA("UICorner") or child:IsA("UIPadding") then
+            child:Destroy()
+        end
     end
 
-    local pillCorner = pill:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
-    pillCorner.CornerRadius = UDim.new(1, 0); pillCorner.Parent = pill
-
-    local pillStroke = pill:FindFirstChild("IslandStroke") or Instance.new("UIStroke")
-    pillStroke.Name = "IslandStroke"; pillStroke.Thickness = 1.6
-    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    pillStroke.Color = Color3.fromRGB(255, 255, 255); pillStroke.Parent = pill
-    local strokeGrad = pillStroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = pillStroke
-    table.insert(ActiveGradients, strokeGrad)
-
-    local LangSlider = Instance.new("Frame")
-    LangSlider.Name = "LangSlider"
-    LangSlider.Size = UDim2.new(1/3, -4, 1, -4)
-    LangSlider.Position = UDim2.new(0, 2, 0, 2)
-    LangSlider.BackgroundColor3 = Color3.fromRGB(95, 110, 235)
-    LangSlider.BorderSizePixel = 0; LangSlider.ZIndex = 10000; LangSlider.Parent = pill
-    local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(1, 0); SliderCorner.Parent = LangSlider
-
-    local BtnVI = Instance.new("TextButton")
-    BtnVI.Name = "BtnVI"; BtnVI.Size = UDim2.new(1/3, 0, 1, 0); BtnVI.Position = UDim2.new(0, 0, 0, 0)
-    BtnVI.BackgroundTransparency = 1; BtnVI.Text = "🇻🇳 Việt"
-    BtnVI.Font = Enum.Font.GothamBold; BtnVI.TextSize = 10.5
-    BtnVI.TextColor3 = Color3.fromRGB(255, 255, 255); BtnVI.ZIndex = 10001; BtnVI.Parent = pill
-
-    local BtnEN = Instance.new("TextButton")
-    BtnEN.Name = "BtnEN"; BtnEN.Size = UDim2.new(1/3, 0, 1, 0); BtnEN.Position = UDim2.new(1/3, 0, 0, 0)
-    BtnEN.BackgroundTransparency = 1; BtnEN.Text = "🌐 English"
-    BtnEN.Font = Enum.Font.GothamBold; BtnEN.TextSize = 10.5
-    BtnEN.TextColor3 = Color3.fromRGB(150, 165, 190); BtnEN.ZIndex = 10001; BtnEN.Parent = pill
-
-    local BtnID = Instance.new("TextButton")
-    BtnID.Name = "BtnID"; BtnID.Size = UDim2.new(1/3, 0, 1, 0); BtnID.Position = UDim2.new(2/3, 0, 0, 0)
-    BtnID.BackgroundTransparency = 1; BtnID.Text = "🇮🇩 Indo"
-    BtnID.Font = Enum.Font.GothamBold; BtnID.TextSize = 10.5
-    BtnID.TextColor3 = Color3.fromRGB(150, 165, 190); BtnID.ZIndex = 10001; BtnID.Parent = pill
-
-    local LANG_POSITIONS = {
-        VI = UDim2.new(0, 2, 0, 2),
-        EN = UDim2.new(1/3, 2, 0, 2),
-        ID = UDim2.new(2/3, 2, 0, 2),
+    -- ── Language names cho từng chế độ ──────────────────────────────────────
+    local LANG_NAMES = {
+        VI = "Ngôn ngữ: Tiếng Việt",
+        EN = "Language: English",
+        ID = "Bahasa: Indonesia",
     }
-    local DIM = Color3.fromRGB(150, 165, 190)
-    local LIT = Color3.fromRGB(255, 255, 255)
+    local LANG_ICONS = { VI = "🇻🇳", EN = "🌐", ID = "🇮🇩" }
+    local CYCLE = { VI = "EN", EN = "ID", ID = "VI" }
 
+    -- ── Restyle pill → 1 nút nhỏ gọn trong navbar hub ────────────────────────
+    -- GIỮ NGUYÊN PARENT (không reparent sang tlnGui)
+    -- → nút nằm ngay trong thanh navbar của hub, giống các nút khác
+    pill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    pill.BackgroundTransparency = 0.88
+    pill.AutomaticSize = Enum.AutomaticSize.XY
+    pill.Size = UDim2.new(0, 0, 0, 0)   -- auto từ content
+    pill.Active = true
+    pill.ClipsDescendants = false
+
+    local pillCorner = Instance.new("UICorner")
+    pillCorner.CornerRadius = UDim.new(0, 5)
+    pillCorner.Parent = pill
+
+    local pillPad = Instance.new("UIPadding")
+    pillPad.PaddingLeft   = UDim.new(0, 8)
+    pillPad.PaddingRight  = UDim.new(0, 8)
+    pillPad.PaddingTop    = UDim.new(0, 3)
+    pillPad.PaddingBottom = UDim.new(0, 3)
+    pillPad.Parent = pill
+
+    -- Rainbow stroke (giống các nút đặc trưng TLN)
+    local pillStroke = Instance.new("UIStroke")
+    pillStroke.Name           = "LangStroke"
+    pillStroke.Thickness      = 1
+    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    pillStroke.Color          = Color3.fromRGB(255, 255, 255)
+    pillStroke.Parent         = pill
+    local sg = Instance.new("UIGradient")
+    sg.Color  = COLOR_SEQ_RAINBOW
+    sg.Parent = pillStroke
+    table.insert(ActiveGradients, sg)
+
+    -- Nút ngôn ngữ chính
+    local langBtn = Instance.new("TextButton")
+    langBtn.Name               = "TLNLangBtn"
+    langBtn.BackgroundTransparency = 1
+    langBtn.Size               = UDim2.new(0, 0, 0, 0)
+    langBtn.AutomaticSize      = Enum.AutomaticSize.XY
+    langBtn.Text               = LANG_ICONS[currentLanguage].." "..LANG_NAMES[currentLanguage]
+    langBtn.Font               = Enum.Font.GothamMedium
+    langBtn.TextSize           = 11
+    langBtn.TextColor3         = Color3.fromRGB(255, 255, 255)
+    langBtn.TextXAlignment     = Enum.TextXAlignment.Center
+    langBtn.ZIndex             = pill.ZIndex + 1
+    langBtn.AutoButtonColor    = true
+    langBtn.Parent             = pill
+
+    -- Hover effect
+    langBtn.MouseEnter:Connect(function()
+        TweenService:Create(pill, TweenInfo.new(0.12), {
+            BackgroundTransparency = 0.72
+        }):Play()
+    end)
+    langBtn.MouseLeave:Connect(function()
+        TweenService:Create(pill, TweenInfo.new(0.12), {
+            BackgroundTransparency = 0.88
+        }):Play()
+    end)
+
+    -- ── setLanguage ──────────────────────────────────────────────────────────
     local function setLanguage(lang)
         if currentLanguage == lang then return end
         currentLanguage = lang
-        TweenService:Create(LangSlider, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = LANG_POSITIONS[lang]}):Play()
-        BtnVI.TextColor3 = (lang == "VI") and LIT or DIM
-        BtnEN.TextColor3 = (lang == "EN") and LIT or DIM
-        BtnID.TextColor3 = (lang == "ID") and LIT or DIM
+        langBtn.Text = LANG_ICONS[lang].." "..LANG_NAMES[lang]
+        -- Tween nhỏ trên nút để báo đã đổi
+        TweenService:Create(pill, TweenInfo.new(0.08), {
+            BackgroundTransparency = 0.55
+        }):Play()
+        task.delay(0.2, function()
+            TweenService:Create(pill, TweenInfo.new(0.2), {
+                BackgroundTransparency = 0.88
+            }):Play()
+        end)
         refreshAllTranslations()
     end
 
-    BtnVI.MouseButton1Click:Connect(function() setLanguage("VI") end)
-    BtnEN.MouseButton1Click:Connect(function() setLanguage("EN") end)
-    BtnID.MouseButton1Click:Connect(function() setLanguage("ID") end)
-
-    local function attachDrag(triggerObj, moveFrame)
-        if triggerObj:GetAttribute("__DragBound") then return end
-        triggerObj:SetAttribute("__DragBound", true)
-        local dragging, dragStart, startPos = false, nil, nil
-        triggerObj.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true; dragStart = input.Position; startPos = moveFrame.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
-                end)
-            end
-        end)
-        triggerObj.InputChanged:Connect(function(input)
-            if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
-                local delta = input.Position - dragStart
-                local cam = workspace.CurrentCamera
-                local maxX = cam and cam.ViewportSize.X - 140 or 800
-                local maxY = cam and cam.ViewportSize.Y - 50 or 600
-                local newX = math.clamp(startPos.X.Offset + delta.X, -maxX/2, maxX/2)
-                local newY = math.clamp(startPos.Y.Offset + delta.Y, 4, maxY)
-                moveFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
-            end
-        end)
-    end
-    attachDrag(pill, pill)
+    -- Click → cycle VI → EN → ID → VI
+    langBtn.MouseButton1Click:Connect(function()
+        setLanguage(CYCLE[currentLanguage] or "VI")
+    end)
 end
 
 -- ==================== 6. LOGO TRÒN ====================
