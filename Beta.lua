@@ -1,3 +1,4 @@
+-- Kaizo Prime | FULL | Vex
 local P=game:GetService("Players")
 local R=game:GetService("RunService")
 local U=game:GetService("UserInputService")
@@ -6,11 +7,7 @@ local VIM=game:GetService("VirtualInputManager")
 local L=game:GetService("Lighting")
 local LP=P.LocalPlayer
 
-local Cfg={
-    AimOn=true, ESPOn=true, FOV=200, Smooth=0.6, Part="Head",
-    TeamCheck=false, MaxDist=600, Predict=0.1, WallCheck=false,
-    ShowFOV=true, Tracers=true, LowGfx=true, CullRange=300,
-}
+local Cfg={AimOn=true,ESPOn=true,FOV=200,Smooth=0.6,Part="Head",TeamCheck=false,MaxDist=600,Predict=0.1,WallCheck=false,ShowFOV=true,Tracers=true,LowGfx=true,CullRange=300}
 
 local function cam() return workspace.CurrentCamera end
 
@@ -34,6 +31,7 @@ local function move(tx,ty)
     else local c=cam(); if c then pcall(function() VIM:SendMouseMoveEvent(cur.X+dx,cur.Y+dy,c) end) end end
     cur=cur+Vector2.new(dx,dy)
 end
+
 local C={Bg=Color3.fromRGB(15,15,17),Panel=Color3.fromRGB(22,22,25),Row=Color3.fromRGB(30,30,34),RowHover=Color3.fromRGB(38,38,44),Accent=Color3.fromRGB(220,45,50),Accent2=Color3.fromRGB(255,95,95),Text=Color3.fromRGB(232,232,236),Dim=Color3.fromRGB(140,140,150),Off=Color3.fromRGB(58,58,64)}
 
 local function Corner(o,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 8); c.Parent=o; return c end
@@ -73,6 +71,7 @@ CloseBtn.Font=Enum.Font.GothamBold; CloseBtn.AutoButtonColor=false; CloseBtn.Par
 Corner(CloseBtn,6)
 CloseBtn.MouseEnter:Connect(function() Tween(CloseBtn,0.12,{BackgroundColor3=C.Accent}) end)
 CloseBtn.MouseLeave:Connect(function() Tween(CloseBtn,0.12,{BackgroundColor3=C.Row}) end)
+
 local Body=Instance.new("ScrollingFrame")
 Body.Size=UDim2.new(1,0,1,-42); Body.Position=UDim2.new(0,0,0,42); Body.BackgroundTransparency=1
 Body.BorderSizePixel=0; Body.ScrollBarThickness=3; Body.ScrollBarImageColor3=C.Accent
@@ -126,7 +125,9 @@ local function Selector(name,opts,def,cb)
     Corner(V,6)
     V.MouseButton1Click:Connect(function() idx=idx%#opts+1; V.Text=opts[idx]; if cb then cb(opts[idx]) end end)
     return function(x) idx=table.find(opts,x) or idx; V.Text=opts[idx]; if cb then cb(opts[idx]) end end
-endlocal function Slider(name,mn,mx,def,cb)
+end
+
+local function Slider(name,mn,mx,def,cb)
     local Rw=Instance.new("Frame"); Rw.Size=UDim2.new(1,-20,0,48); Rw.BackgroundColor3=C.Row
     Rw.BorderSizePixel=0; Rw.Parent=Body; Corner(Rw,7)
     local Lb=Instance.new("TextLabel"); Lb.Size=UDim2.new(1,-70,0,16); Lb.Position=UDim2.new(0,10,0,6)
@@ -202,14 +203,12 @@ U.InputBegan:Connect(function(i,g)
     elseif i.KeyCode==Enum.KeyCode.H then SetAim(not Cfg.AimOn)
     elseif i.KeyCode==Enum.KeyCode.E then SetESP(not Cfg.ESPOn) end
 end)
-    local function applyLow()
+
+local function applyLow()
     if not Cfg.LowGfx then return end
     pcall(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level01 end)
-    L.GlobalShadows=false
-    L.FogEnd=100000
-    L.Brightness=1
-    L.EnvironmentDiffuseScale=0
-    L.EnvironmentSpecularScale=0
+    L.GlobalShadows=false; L.FogEnd=100000; L.Brightness=1
+    L.EnvironmentDiffuseScale=0; L.EnvironmentSpecularScale=0
     for _,v in ipairs(L:GetChildren()) do
         if v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") then
             pcall(function() v:Destroy() end)
@@ -298,7 +297,8 @@ local function gettarget()
     return best
 end
 local function predpos(part) if not part then return Vector3.zero end; return part.Position+part.AssemblyLinearVelocity*Cfg.Predict end
-    local cullAcc=0
+
+local cullAcc=0
 local dbg=0
 R.Heartbeat:Connect(function(dt)
     local rmb=U:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
@@ -370,6 +370,8 @@ R.RenderStepped:Connect(function(dt)
                             e.name.Position=Vector2.new(x+w/2,y-14); e.name.Visible=true
                             e.dst.Text="["..math.floor(dist(p)).."m]"; e.dst.Position=Vector2.new(x+w/2,y+hh+2); e.dst.Visible=true
                             local hum=info[p] and info[p].hum
+                            if hum then
+                                                            local hum=info[p] and info[p].hum
                             if hum then
                                 local pct=math.clamp(hum.Health/math.max(hum.MaxHealth,1),0,1)
                                 local fh=math.max(1,math.floor(hh*pct))
