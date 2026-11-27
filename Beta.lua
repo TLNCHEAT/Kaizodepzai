@@ -1,1997 +1,502 @@
--- ==============================================================================
---  TLN CHEAT - MERGED EDITION (VI + EN + ID | 3-LANG PILL | FULL FEATURES)
--- ==============================================================================
+-- Kaizo Prime | Urban Reload | Delta Full
+-- RightShift = menu | RMB = aim
+-- F=Head G=Body H=AimToggle E=ESPToggle
 
-local NEW_TITLE       = "TLN CHEAT"
-local TELEGRAM_LINK   = "https://t.me/addlist/dlX9dRlQmyNlMWFl"
-local CHILLI_LOGO_ID  = "rbxassetid://100224396235670"
-local LOGO_BG_COLOR   = Color3.fromRGB(5, 7, 15)
-local ISLAND_BLACK_BG = Color3.fromRGB(0, 0, 0)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LP = Players.LocalPlayer
+local Mouse = LP:GetMouse()
 
--- ==================== 0. HTTP HOOK SỚM (chạy đồng bộ trước khi VenyxHub load) ====================
--- [FIX] Phải hook TRƯỚC task.spawn VenyxHub để spoof plan Chilli Finder kịp lúc
-local function spoofJsonEarly(s)
-    if type(s) ~= "string" then return s end
-    -- Plan / tier
-    s = s:gsub('"plan"%s*:%s*null',              '"plan":"pro_max"')
-    s = s:gsub('"plan"%s*:%s*"[a-z_%-]*"',       '"plan":"pro_max"')
-    s = s:gsub('"tier"%s*:%s*"[a-z_%-]*"',       '"tier":"pro_max"')
-    -- Booking / active
-    s = s:gsub('"has_booking"%s*:%s*false',       '"has_booking":true')
-    s = s:gsub('"booking_active"%s*:%s*false',    '"booking_active":true')
-    s = s:gsub('"active"%s*:%s*false',            '"active":true')
-    s = s:gsub('"is_active"%s*:%s*false',         '"is_active":true')
-    -- Auth / access
-    s = s:gsub('"authorized"%s*:%s*false',        '"authorized":true')
-    s = s:gsub('"has_access"%s*:%s*false',        '"has_access":true')
-    -- [FIX] Extra CF plan check fields
-    s = s:gsub('"is_premium"%s*:%s*false',        '"is_premium":true')
-    s = s:gsub('"premium"%s*:%s*false',           '"premium":true')
-    s = s:gsub('"is_pro"%s*:%s*false',            '"is_pro":true')
-    s = s:gsub('"pro"%s*:%s*false',               '"pro":true')
-    s = s:gsub('"is_subscribed"%s*:%s*false',     '"is_subscribed":true')
-    s = s:gsub('"subscribed"%s*:%s*false',        '"subscribed":true')
-    s = s:gsub('"subscription"%s*:%s*null',       '"subscription":"pro_max"')
-    s = s:gsub('"subscription"%s*:%s*"[a-z_%-]*"', '"subscription":"pro_max"')
-    -- [FIX] Login / session fields (Chilli Finder OAuth check)
-    s = s:gsub('"logged_in"%s*:%s*false',         '"logged_in":true')
-    s = s:gsub('"authenticated"%s*:%s*false',     '"authenticated":true')
-    s = s:gsub('"is_authenticated"%s*:%s*false',  '"is_authenticated":true')
-    s = s:gsub('"session_valid"%s*:%s*false',     '"session_valid":true')
-    s = s:gsub('"token_valid"%s*:%s*false',       '"token_valid":true')
-    s = s:gsub('"is_member"%s*:%s*false',         '"is_member":true')
-    s = s:gsub('"verified"%s*:%s*false',          '"verified":true')
-    -- [FIX v2] Capability / feature flags VenyxHub mới check
-    s = s:gsub('"enabled"%s*:%s*false',              '"enabled":true')
-    s = s:gsub('"is_enabled"%s*:%s*false',           '"is_enabled":true')
-    s = s:gsub('"allow"%s*:%s*false',                '"allow":true')
-    s = s:gsub('"allowed"%s*:%s*false',              '"allowed":true')
-    s = s:gsub('"access"%s*:%s*false',               '"access":true')
-    s = s:gsub('"can_steal"%s*:%s*false',            '"can_steal":true')
-    s = s:gsub('"can_farm"%s*:%s*false',             '"can_farm":true')
-    s = s:gsub('"can_use_pets"%s*:%s*false',         '"can_use_pets":true')
-    s = s:gsub('"pet_activity_enabled"%s*:%s*false', '"pet_activity_enabled":true')
-    s = s:gsub('"has_access_to"%s*:%s*false',        '"has_access_to":true')
-    -- [FIX v2] Plan level integers
-    s = s:gsub('"plan_id"%s*:%s*%d+',               '"plan_id":99')
-    s = s:gsub('"tier_id"%s*:%s*%d+',               '"tier_id":99')
-    s = s:gsub('"access_level"%s*:%s*%d+',          '"access_level":99')
-    -- [FIX v2] Feature arrays rỗng/null → full list
-    local FEAT = '["all","auto_steal","auto_farm","pets","race","lab","butterfly","wisp","star","admin"]'
-    s = s:gsub('"features"%s*:%s*%[%]',    '"features":' .. FEAT)
-    s = s:gsub('"features"%s*:%s*null',    '"features":' .. FEAT)
-    s = s:gsub('"permissions"%s*:%s*%[%]', '"permissions":["all"]')
-    s = s:gsub('"permissions"%s*:%s*null', '"permissions":["all"]')
-    s = s:gsub('"scopes"%s*:%s*%[%]',     '"scopes":["all"]')
-    s = s:gsub('"scopes"%s*:%s*null',     '"scopes":["all"]')
-    -- user null → fake object để CF không crash khi đọc user.id
-    s = s:gsub('"user"%s*:%s*null',               '"user":{"id":1,"name":"Player","plan":"pro_max","tier":"pro_max","subscription":"pro_max"}')
-    -- [INFINITE TIME] Spoof tất cả field thời gian hết hạn → vô hạn (năm 2100)
-    -- [BUG FIX] Thêm spoof cho dạng ISO string "2024-01-01T..." bên cạnh số Unix
-    local ISO_FAR = "2100-01-01T00:00:00.000Z"
-    s = s:gsub('"expires_at"%s*:%s*"[^"]*"',   '"expires_at":"' .. ISO_FAR .. '"')
-    s = s:gsub('"expire_at"%s*:%s*"[^"]*"',    '"expire_at":"'  .. ISO_FAR .. '"')
-    s = s:gsub('"valid_until"%s*:%s*"[^"]*"',  '"valid_until":"' .. ISO_FAR .. '"')
-    s = s:gsub('"end_date"%s*:%s*"[^"]*"',     '"end_date":"'   .. ISO_FAR .. '"')
-    s = s:gsub('"end_time"%s*:%s*"[^"]*"',     '"end_time":"'   .. ISO_FAR .. '"')
-    local FAR = "4102444800"
-    s = s:gsub('"expires_at"%s*:%s*%d+',         '"expires_at":' .. FAR)
-    s = s:gsub('"expire_at"%s*:%s*%d+',          '"expire_at":' .. FAR)
-    s = s:gsub('"expired_at"%s*:%s*%d+',         '"expired_at":' .. FAR)
-    s = s:gsub('"valid_until"%s*:%s*%d+',        '"valid_until":' .. FAR)
-    s = s:gsub('"end_date"%s*:%s*%d+',           '"end_date":' .. FAR)
-    s = s:gsub('"end_time"%s*:%s*%d+',           '"end_time":' .. FAR)
-    s = s:gsub('"exp"%s*:%s*%d+',                '"exp":' .. FAR)
-    s = s:gsub('"expires_in"%s*:%s*%-?%d+',      '"expires_in":99999999')
-    s = s:gsub('"time_left"%s*:%s*%-?%d+',       '"time_left":99999999')
-    s = s:gsub('"time_remaining"%s*:%s*%-?%d+',  '"time_remaining":99999999')
-    s = s:gsub('"hours_left"%s*:%s*%-?%d+',      '"hours_left":99999')
-    s = s:gsub('"days_left"%s*:%s*%-?%d+',       '"days_left":99999')
-    s = s:gsub('"minutes_left"%s*:%s*%-?%d+',    '"minutes_left":99999999')
-    s = s:gsub('"seconds_left"%s*:%s*%-?%d+',    '"seconds_left":99999999')
-    s = s:gsub('"expired"%s*:%s*true',            '"expired":false')
-    s = s:gsub('"is_expired"%s*:%s*true',         '"is_expired":false')
-    s = s:gsub('"key_expired"%s*:%s*true',        '"key_expired":false')
-    return s
-end
--- [CRACK] Lưu jobIds từ server list API của Chilli Finder để teleport thẳng
-_G.__CF_JobIds      = {}  -- danh sách jobId theo thứ tự hiển thị
-_G.__CF_JobIds_tick = 0   -- thời điểm cập nhật gần nhất
-local UUID_RE = "(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)"
-local function extractCFJobIds(body)
-    if type(body) ~= "string" then return end
-    -- Chỉ parse khi response có nhiều hơn 1 UUID (list servers, không phải plan check)
-    local ids = {}
-    for uuid in body:gmatch(UUID_RE) do
-        -- Bỏ qua jobId của server hiện tại và duplicate
-        if uuid ~= game.JobId then
-            local dup = false
-            for _, existing in ipairs(ids) do if existing == uuid then dup=true; break end end
-            if not dup then table.insert(ids, uuid) end
-        end
-    end
-    if #ids >= 1 then
-        _G.__CF_JobIds      = ids
-        _G.__CF_JobIds_tick = tick()
-    end
-end
-
-pcall(function()
-    local _origHG = game.HttpGet
-    game.HttpGet = function(self, url, ...)
-        local ok, res = pcall(_origHG, self, url, ...)
-        if not ok then return "" end
-        if type(url) == "string" and url:find("chillihub") then
-            extractCFJobIds(res)   -- [CRACK] lưu jobIds trước khi spoof
-            return spoofJsonEarly(res)
-        end
-        return res
-    end
-end)
--- [FIX] Hook executor-level request() (Synapse / KRNL / Delta / Wave)
--- game:HttpGet dùng Roblox built-in; một số Chilli Finder module gọi thẳng request()
-pcall(function()
-    if type(request) == "function" then
-        local _origReqFn = request
-        request = function(opts, ...)
-            local ok, res = pcall(_origReqFn, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end
-end)
-pcall(function()
-    if syn and type(syn.request) == "function" then
-        local _s = syn.request
-        syn.request = function(opts, ...)
-            local ok, res = pcall(_s, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end
-end)
-pcall(function()
-    local _HS      = game:GetService("HttpService")
-    local _origReq = _HS.RequestAsync
-    _HS.RequestAsync = function(self, opts, ...)
-        local ok, res = pcall(_origReq, self, opts, ...)
-        if ok and type(res) == "table" then
-            local url = (type(opts) == "table" and opts.Url) or ""
-            if url:find("chillihub") then
-                extractCFJobIds(res.Body or "")  -- [CRACK]
-                res.Body = spoofJsonEarly(res.Body or "")
-            end
-            return res
-        end
-        return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-    end
-end)
-
--- [FIX] Hook http_request (Delta, Wave, Fluxus dùng tên này thay vì request)
-pcall(function()
-    if type(http_request) == "function" then
-        local _origHR = http_request
-        http_request = function(opts, ...)
-            local ok, res = pcall(_origHR, opts, ...)
-            if ok and type(res) == "table" then
-                local url = (type(opts) == "table" and (opts.Url or opts.url or opts.URL)) or ""
-                if type(url) == "string" and url:find("chillihub") then
-                    if type(res.Body) == "string" then extractCFJobIds(res.Body); res.Body = spoofJsonEarly(res.Body) end
-                    if type(res.body) == "string" then extractCFJobIds(res.body); res.body = spoofJsonEarly(res.body) end
-                end
-                return res
-            end
-            return ok and res or {Success=false,StatusCode=0,Body="",Headers={}}
-        end
-    end
-end)
--- [FIX] Hook HttpService:GetAsync (một số CF module dùng GetAsync thay HttpGet)
-pcall(function()
-    local _HS2    = game:GetService("HttpService")
-    local _origGA = _HS2.GetAsync
-    _HS2.GetAsync = function(self, url, ...)
-        local ok, res = pcall(_origGA, self, url, ...)
-        if not ok then return "" end
-        if type(url) == "string" and url:find("chillihub") then
-            extractCFJobIds(res)
-            return spoofJsonEarly(res)
-        end
-        return res
-    end
-end)
-
--- [FIX] Block CF redirect → chillihub.pro/purchase (mở trình duyệt mua gói)
-pcall(function()
-    local GuiService = game:GetService("GuiService")
-    local _origOpen  = GuiService.OpenBrowserWindow
-    GuiService.OpenBrowserWindow = function(self, url, ...)
-        if type(url) == "string" and (url:find("chillihub") or url:find("purchase") or url:find("subscribe") or url:find("upgrade")) then
-            -- Chặn redirect mua gói, không làm gì
-            return
-        end
-        return _origOpen(self, url, ...)
-    end
-end)
--- [FIX] Block SetCore OpenBrowserWindow (Roblox CoreGui path)
-pcall(function()
-    local StarterGui = game:GetService("StarterGui")
-    local _origSC    = StarterGui.SetCore
-    StarterGui.SetCore = function(self, coreType, ...)
-        if coreType == "PromptSendFriendRequest" then return end
-        -- nếu là OpenBrowserWindow, lọc URL purchase
-        if coreType == "OpenBrowserWindow" then
-            local args = {...}
-            local url  = (type(args[1]) == "string" and args[1]) or (type(args[1]) == "table" and args[1].Url) or ""
-            if url:find("chillihub") or url:find("purchase") then return end
-        end
-        return _origSC(self, coreType, ...)
-    end
-end)
-
--- ==================== 1. LOAD VENYXHUB ====================
--- [FIX] Reset guard mỗi lần inject lại để hub luôn được load mới
-getgenv().__TLNV5NewLoaded = nil
-if not getgenv().__TLNV5NewLoaded then
-    getgenv().__TLNV5NewLoaded = true
-    getgenv().__TLNHubReady    = false
-    getgenv().__TLNHub         = nil
-    task.spawn(function()
-        local ok, result = pcall(function()
-            return loadstring(game:HttpGet(
-                "https://raw.githubusercontent.com/tienkhanh1/Venyx/main/VenyxHub"
-            ))()
-        end)
-        if ok then
-            getgenv().__TLNHub      = result   -- hub object (nếu hub trả về)
-            getgenv().__TLNHubReady = true
-        else
-            warn("[TLN] VenyxHub load failed:", result)
-            getgenv().__TLNHubReady = true     -- vẫn set true để không treo loop
-            -- [FIX] Hiện thông báo lỗi nổi để người dùng biết hub không load được
-            pcall(function()
-                local sg = Instance.new("ScreenGui")
-                sg.Name = "TLN_LoadError"; sg.ResetOnSpawn = false
-                sg.Parent = (gethui and gethui()) or game:GetService("CoreGui")
-                local fr = Instance.new("Frame", sg)
-                fr.Size = UDim2.new(0, 360, 0, 56)
-                fr.Position = UDim2.new(0.5, -180, 0, 60)
-                fr.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-                fr.BorderSizePixel = 0
-                Instance.new("UICorner", fr).CornerRadius = UDim.new(0, 8)
-                local lbl = Instance.new("TextLabel", fr)
-                lbl.Size = UDim2.new(1, -12, 1, 0); lbl.Position = UDim2.new(0, 6, 0, 0)
-                lbl.BackgroundTransparency = 1; lbl.TextColor3 = Color3.fromRGB(255, 90, 90)
-                lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 13; lbl.TextWrapped = true
-                lbl.TextXAlignment = Enum.TextXAlignment.Left
-                lbl.Text = "⚠ TLN CHEAT: VenyxHub load thất bại!\nKiểm tra kết nối mạng hoặc thử lại."
-                task.delay(8, function() pcall(function() sg:Destroy() end) end)
-            end)
-        end
-    end)
-end
-
--- Helper: chờ hub sẵn sàng rồi chạy callback
-local function onHubReady(callback)
-    task.spawn(function()
-        local t = 0
-        while not getgenv().__TLNHubReady and t < 30 do
-            task.wait(0.3); t = t + 0.3
-        end
-        callback(getgenv().__TLNHub)
-    end)
-end
-
-local Players     = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-local TweenService = game:GetService("TweenService")
-local CoreGui     = game:GetService("CoreGui")
-
-local roots = {
-    gethui and gethui(),
-    CoreGui,
-    LocalPlayer:WaitForChild("PlayerGui")
+local Cfg = {
+    AimOn = true,
+    ESPOn = true,
+    FOV = 150,
+    Smooth = 0.15,
+    Part = "Head",
+    TeamCheck = false,
+    MaxDist = 600,
+    MenuOpen = true,
 }
 
-local ActiveGradients = {}
+-- DETECT AIM API
+local AimAPI = "none"
+if pcall(function() mousemoveto(Mouse.X, Mouse.Y) end) then
+    AimAPI = "moveto"
+elseif pcall(function() mousemoverel(0, 0) end) then
+    AimAPI = "moverel"
+elseif pcall(function()
+    local VIM = game:GetService("VirtualInputManager")
+    local m = UIS:GetMouseLocation()
+    VIM:SendMouseMoveEvent(m.X, m.Y, Camera)
+end) then
+    AimAPI = "vim"
+elseif pcall(function() syn.mouse_moverel(0, 0) end) then
+    AimAPI = "syn"
+end
+print("[Kaizo Prime] AimAPI: " .. AimAPI)
 
-local COLOR_SEQ_RAINBOW = ColorSequence.new({
-    ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,  55,  55)),
-    ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 175,  40)),
-    ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 235,  50)),
-    ColorSequenceKeypoint.new(0.60, Color3.fromRGB( 50, 255, 130)),
-    ColorSequenceKeypoint.new(0.80, Color3.fromRGB( 60, 185, 255)),
-    ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,  55,  55)),
+local function MoveAim(tx, ty)
+    local mx = Mouse.X
+    local my = Mouse.Y
+    local nx = mx + (tx - mx) * Cfg.Smooth
+    local ny = my + (ty - my) * Cfg.Smooth
+    local dx = (tx - mx) * Cfg.Smooth
+    local dy = (ty - my) * Cfg.Smooth
+    if AimAPI == "moveto" then
+        pcall(mousemoveto, nx, ny)
+    elseif AimAPI == "moverel" then
+        pcall(mousemoverel, dx, dy)
+    elseif AimAPI == "vim" then
+        pcall(function()
+            local VIM = game:GetService("VirtualInputManager")
+            VIM:SendMouseMoveEvent(nx, ny, Camera)
+        end)
+    elseif AimAPI == "syn" then
+        pcall(function() syn.mouse_moverel(dx, dy) end)
+    end
+end
+
+-- GUI
+local SG = Instance.new("ScreenGui")
+SG.Name = "KaizoPrime"
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+pcall(function() SG.Parent = game:GetService("CoreGui") end)
+if not SG.Parent then SG.Parent = LP.PlayerGui end
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 230, 0, 330)
+Main.Position = UDim2.new(0, 60, 0, 60)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Parent = SG
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
+local Stroke = Instance.new("UIStroke", Main)
+Stroke.Color = Color3.fromRGB(220, 30, 30)
+Stroke.Thickness = 1.5
+
+local TB = Instance.new("Frame", Main)
+TB.Size = UDim2.new(1, 0, 0, 38)
+TB.BackgroundColor3 = Color3.fromRGB(220, 30, 30)
+TB.BorderSizePixel = 0
+Instance.new("UICorner", TB).CornerRadius = UDim.new(0, 8)
+
+local TL = Instance.new("TextLabel", TB)
+TL.Size = UDim2.new(1, 0, 1, 0)
+TL.BackgroundTransparency = 1
+TL.Text = "⚡ KAIZO PRIME"
+TL.TextColor3 = Color3.fromRGB(255, 255, 255)
+TL.TextSize = 15
+TL.Font = Enum.Font.GothamBold
+
+local APILabel = Instance.new("TextLabel", Main)
+APILabel.Size = UDim2.new(1, -10, 0, 14)
+APILabel.Position = UDim2.new(0, 5, 0, 40)
+APILabel.BackgroundTransparency = 1
+APILabel.Text = "API: " .. AimAPI .. " | RightShift = toggle menu"
+APILabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+APILabel.TextSize = 10
+APILabel.Font = Enum.Font.Gotham
+APILabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Toggle factory
+local function MakeToggle(name, ypos, default, onChange)
+    local Row = Instance.new("Frame", Main)
+    Row.Size = UDim2.new(1, -20, 0, 32)
+    Row.Position = UDim2.new(0, 10, 0, ypos)
+    Row.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Row.BorderSizePixel = 0
+    Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 6)
+
+    local Lbl = Instance.new("TextLabel", Row)
+    Lbl.Size = UDim2.new(0.6, 0, 1, 0)
+    Lbl.Position = UDim2.new(0, 10, 0, 0)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = name
+    Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl.TextSize = 13
+    Lbl.Font = Enum.Font.Gotham
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local state = default
+    local Btn = Instance.new("TextButton", Row)
+    Btn.Size = UDim2.new(0, 54, 0, 22)
+    Btn.Position = UDim2.new(1, -64, 0.5, -11)
+    Btn.BackgroundColor3 = state and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(180, 30, 30)
+    Btn.BorderSizePixel = 0
+    Btn.Text = state and "ON" or "OFF"
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.TextSize = 12
+    Btn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
+
+    local function Update(val)
+        state = val
+        Btn.Text = state and "ON" or "OFF"
+        Btn.BackgroundColor3 = state and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(180, 30, 30)
+        onChange(state)
+    end
+
+    Btn.MouseButton1Click:Connect(function() Update(not state) end)
+    return Update
+end
+
+-- Selector factory
+local function MakeSelector(name, ypos, options, default, onChange)
+    local Row = Instance.new("Frame", Main)
+    Row.Size = UDim2.new(1, -20, 0, 32)
+    Row.Position = UDim2.new(0, 10, 0, ypos)
+    Row.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Row.BorderSizePixel = 0
+    Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 6)
+
+    local Lbl = Instance.new("TextLabel", Row)
+    Lbl.Size = UDim2.new(0.5, 0, 1, 0)
+    Lbl.Position = UDim2.new(0, 10, 0, 0)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = name
+    Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl.TextSize = 13
+    Lbl.Font = Enum.Font.Gotham
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local idx = table.find(options, default) or 1
+    local ValBtn = Instance.new("TextButton", Row)
+    ValBtn.Size = UDim2.new(0, 80, 0, 22)
+    ValBtn.Position = UDim2.new(1, -90, 0.5, -11)
+    ValBtn.BackgroundColor3 = Color3.fromRGB(220, 30, 30)
+    ValBtn.BorderSizePixel = 0
+    ValBtn.Text = options[idx]
+    ValBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ValBtn.TextSize = 12
+    ValBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", ValBtn).CornerRadius = UDim.new(0, 4)
+
+    ValBtn.MouseButton1Click:Connect(function()
+        idx = idx % #options + 1
+        ValBtn.Text = options[idx]
+        onChange(options[idx])
+    end)
+end
+
+-- Slider factory
+local function MakeSlider(name, ypos, min, max, default, onChange)
+    local Row = Instance.new("Frame", Main)
+    Row.Size = UDim2.new(1, -20, 0, 44)
+    Row.Position = UDim2.new(0, 10, 0, ypos)
+    Row.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Row.BorderSizePixel = 0
+    Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 6)
+
+    local Lbl = Instance.new("TextLabel", Row)
+    Lbl.Size = UDim2.new(1, -10, 0, 18)
+    Lbl.Position = UDim2.new(0, 10, 0, 2)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = name .. ": " .. tostring(default)
+    Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl.TextSize = 12
+    Lbl.Font = Enum.Font.Gotham
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Track = Instance.new("Frame", Row)
+    Track.Size = UDim2.new(1, -20, 0, 6)
+    Track.Position = UDim2.new(0, 10, 0, 30)
+    Track.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Track.BorderSizePixel = 0
+    Instance.new("UICorner", Track).CornerRadius = UDim.new(1, 0)
+
+    local Fill = Instance.new("Frame", Track)
+    Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(220, 30, 30)
+    Fill.BorderSizePixel = 0
+    Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+    Track.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    end)
+    UIS.InputEnded:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    UIS.InputChanged:Connect(function(inp)
+        if dragging and inp.UserInputType == Enum.UserInputType.MouseMovement then
+            local rel = math.clamp((inp.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
+            local val = math.floor(min + (max - min) * rel)
+            Fill.Size = UDim2.new(rel, 0, 1, 0)
+            Lbl.Text = name .. ": " .. tostring(val)
+            onChange(val)
+        end
+    end)
+end
+
+-- Build toggles
+local SetAim  = MakeToggle("Aimbot",     60,  Cfg.AimOn,     function(v) Cfg.AimOn = v end)
+local SetESP  = MakeToggle("ESP",        98,  Cfg.ESPOn,     function(v) Cfg.ESPOn = v end)
+local SetTeam = MakeToggle("TeamCheck",  136, Cfg.TeamCheck, function(v) Cfg.TeamCheck = v end)
+MakeSelector("AimPart", 174, {"Head", "Body"}, Cfg.Part, function(v) Cfg.Part = v end)
+MakeSlider("FOV",    216, 50,  400, Cfg.FOV,                        function(v) Cfg.FOV = v end)
+MakeSlider("Smooth", 266, 1,   30,  math.floor(Cfg.Smooth * 100),   function(v) Cfg.Smooth = v / 100 end)
+
+-- Menu toggle key
+UIS.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    local k = inp.KeyCode
+    if k == Enum.KeyCode.RightShift then
+        Cfg.MenuOpen = not Cfg.MenuOpen
+        Main.Visible = Cfg.MenuOpen
+    elseif k == Enum.KeyCode.F then Cfg.Part = "Head"
+    elseif k == Enum.KeyCode.G then Cfg.Part = "Body"
+    elseif k == Enum.KeyCode.H then
+        Cfg.AimOn = not Cfg.AimOn
+        SetAim(Cfg.AimOn)
+    elseif k == Enum.KeyCode.E then
+        Cfg.ESPOn = not Cfg.ESPOn
+        SetESP(Cfg.ESPOn)
+    end
+end)
+
+-- ESP Drawing
+local Cache = {}
+
+local function D(t, props)
+    local ok, d = pcall(Drawing.new, t)
+    if not ok then return nil end
+    for k, v in pairs(props) do pcall(function() d[k] = v end) end
+    return d
+end
+
+local function MakeESP(p)
+    Cache[p] = {
+        BoxOut = D("Square", {Visible=false,Color=Color3.fromRGB(0,0,0),Thickness=3,Filled=false}),
+        Box    = D("Square", {Visible=false,Color=Color3.fromRGB(255,255,255),Thickness=1.5,Filled=false}),
+        Name   = D("Text",   {Visible=false,Color=Color3.fromRGB(255,255,255),Size=13,Center=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0),Text=p.Name}),
+        Dist   = D("Text",   {Visible=false,Color=Color3.fromRGB(180,180,180),Size=11,Center=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)}),
+        HPBG   = D("Square", {Visible=false,Color=Color3.fromRGB(0,0,0),Thickness=1,Filled=true}),
+        HPFill = D("Square", {Visible=false,Color=Color3.fromRGB(50,255,50),Thickness=1,Filled=true}),
+        HPTxt  = D("Text",   {Visible=false,Color=Color3.fromRGB(255,255,255),Size=10,Center=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)}),
+    }
+end
+
+local function HideAll(esp)
+    for _, d in pairs(esp) do if d then pcall(function() d.Visible = false end) end end
+end
+
+local function RemoveESP(p)
+    if Cache[p] then
+        for _, d in pairs(Cache[p]) do if d then pcall(function() d:Remove() end) end end
+        Cache[p] = nil
+    end
+end
+
+-- Helpers
+local function GetHead(char)
+    for _, n in ipairs({"Head","head","UpperTorso","Torso"}) do
+        local p = char:FindFirstChild(n)
+        if p and p:IsA("BasePart") then return p end
+    end
+    local best, bestY = nil, -math.huge
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" and v.Position.Y > bestY then
+            bestY = v.Position.Y
+            best = v
+        end
+    end
+    return best
+end
+
+local function GetRoot(char)
+    return char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("LowerTorso")
+        or char:FindFirstChild("Torso")
+        or char:FindFirstChildWhichIsA("BasePart")
+end
+
+local function GetAimPart(char)
+    return Cfg.Part == "Head" and GetHead(char) or GetRoot(char)
+end
+
+local function IsAlive(p)
+    if not p.Character then return false end
+    local h = p.Character:FindFirstChildOfClass("Humanoid")
+    return h and h.Health > 0
+end
+
+local function GetHP(p)
+    if not p.Character then return 100, 100 end
+    local h = p.Character:FindFirstChildOfClass("Humanoid")
+    if h then return h.Health, h.MaxHealth end
+    return 100, 100
+end
+
+local function ToScreen(pos)
+    local v, on = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(v.X, v.Y), v.Z > 0 and on
+end
+
+local function GetDist(p)
+    local char = p.Character
+    local my = LP.Character
+    if not char or not my then return math.huge end
+    local r = GetRoot(char)
+    local mr = GetRoot(my)
+    if r and mr then return (r.Position - mr.Position).Magnitude end
+    return math.huge
+end
+
+local function BoxBounds(char)
+    local head = GetHead(char)
+    local root = GetRoot(char)
+    if not head or not root then return nil end
+    local tVP, tOn = ToScreen(head.Position + Vector3.new(0, 1, 0))
+    local bVP, bOn = ToScreen(root.Position - Vector3.new(0, 3, 0))
+    if not tOn and not bOn then return nil end
+    local h = math.abs(tVP.Y - bVP.Y)
+    if h < 5 then return nil end
+    local w = h * 0.55
+    return tVP.X - w / 2, math.min(tVP.Y, bVP.Y), w, h
+end
+
+local function HPColor(pct)
+    if pct > 0.6 then return Color3.fromRGB(50, 255, 50)
+    elseif pct > 0.3 then return Color3.fromRGB(255, 180, 0)
+    else return Color3.fromRGB(255, 50, 50) end
+end
+
+-- FOV Circle
+local FovCircle = D("Circle", {
+    Visible = true,
+    Radius = Cfg.FOV,
+    Color = Color3.fromRGB(255, 255, 255),
+    Thickness = 1,
+    Filled = false,
+    Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 })
 
--- [PERF] Reset guard để không chạy 2 loop khi re-inject
-getgenv().__ChilliV5RainbowLoop = nil
-if not getgenv().__ChilliV5RainbowLoop then
-    getgenv().__ChilliV5RainbowLoop = true
-    task.spawn(function()
-        local rot = 0
-        while true do
-            rot = (rot + 8) % 360  -- [PERF] bước 8 bù cho interval 0.25s, mắt không phân biệt được
-            for i = #ActiveGradients, 1, -1 do
-                local g = ActiveGradients[i]
-                if g and g.Parent then g.Rotation = rot
-                else
-                    -- [PERF] swap-remove O(1) thay vì table.remove O(n)
-                    ActiveGradients[i] = ActiveGradients[#ActiveGradients]
-                    ActiveGradients[#ActiveGradients] = nil
-                end
-            end
-            task.wait(0.25)   -- [LAGFIX] giảm thêm xuống 4fps border animation, tiết kiệm CPU thêm ~40%
+-- Target
+local Target = nil
+
+local function GetTarget()
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local best, bestDist = nil, Cfg.FOV
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LP then continue end
+        if Cfg.TeamCheck and p.Team == LP.Team then continue end
+        if not IsAlive(p) then continue end
+        local char = p.Character
+        if not char then continue end
+        local ap = GetAimPart(char)
+        if not ap then continue end
+        local sp, on = ToScreen(ap.Position)
+        if not on then continue end
+        local d = (sp - center).Magnitude
+        if d < bestDist then
+            bestDist = d
+            best = p
         end
-    end)
+    end
+    return best
 end
 
--- ==================== 2. FPS THẬT (đã xóa FPS ảo) ====================
-local _fpsCheckCache = {}  -- [PERF] cache kết quả để không gọi find() lặp lại
-local function isFpsCounterText(str)
-    if not str or str == "" then return false end
-    local cached = _fpsCheckCache[str]
-    if cached ~= nil then return cached end
-    local result = str:find("FPS") ~= nil and str:find("ms") ~= nil
-    if #str < 30 then _fpsCheckCache[str] = result end
-    return result
-end
--- [FIX] hookFakeFpsCounter đã bị vô hiệu hóa → FPS thật hiển thị
-local function hookFakeFpsCounter(_lbl)
-    return  -- no-op: không spoof FPS nữa
-end
+-- Aimbot loop
+RunService.Heartbeat:Connect(function()
+    if FovCircle then
+        pcall(function()
+            FovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            FovCircle.Radius = Cfg.FOV
+            FovCircle.Visible = true
+        end)
+    end
 
--- ==================== 3. DỊCH THUẬT ====================
-local currentLanguage = "VI"
-local FastCache       = {}
-local TrackedTexts    = {}
-local GlobalRefreshIslandStatus = nil
-
--- ---- EXACT VI ----
-local EXACT_MATCH_VI = {
-    ["Idle"]="Đang rảnh",["Waiting"]="Đang chờ",["Nothing"]="Không có gì",
-    ["Waiting in safe zone"]="Đợi ở vùng an toàn",["Returning to safe zone"]="Đang về vùng an toàn",
-    ["Returning home"]="Đang quay về nhà",["Going home"]="Đang về nhà",
-    ["Delivering egg"]="Đang giao trứng về chuồng",["Dropping egg"]="Đang thả trứng",
-    ["Dropping eggs"]="Đang thả trứng",["Selling eggs"]="Đang bán trứng",
-    ["Selling pets"]="Đang bán pet",["Selling lab eggs"]="Đang bán trứng Lab",
-    ["Hatching eggs"]="Đang ấp trứng",["Placing eggs"]="Đang đặt trứng",
-    ["Mutating eggs"]="Đang đột biến trứng",["Fusing pets"]="Đang dung hợp pet",
-    ["Hopping server"]="Đang đổi máy chủ",["Rejoining"]="Đang vào lại phòng",
-    ["Avoiding guard"]="Đang né vệ sĩ",["Evading guard"]="Đang né vệ sĩ",
-    ["Using treadmill"]="Đang chạy máy tập",["Upgrading treadmill"]="Đang nâng cấp máy tập",
-    ["Upgrading base"]="Đang nâng cấp căn cứ",["Claiming rewards"]="Đang nhận thưởng",
-    ["Claiming offline cash"]="Đang nhận tiền ngoại tuyến",["Catching shooting star"]="Đang bắt sao băng",
-    ["Catching butterfly"]="Đang bắt bướm",["Joining race"]="Đang vào đường đua",
-    ["Racing"]="Đang đua xe",["Home"]="Trang Chủ",["Dashboard"]="Bảng Điều Khiển",
-    ["Welcome back"]="Chào mừng trở lại",["TLN CHEAT Discord"]="TLN CHEAT Discord",
-    ["Updates, keys, support"]="Cập nhật, nhận key, hỗ trợ",["Copy Invite"]="Chép Link Mời",
-    ["Discord"]="Discord",["MONEY /S"]="TIỀN /GIÂY",["OPEN"]="MỞ",
-    ["Welcome to TLN CHEAT 1.0.0! Join our Telegram for updates and support"]="Chào mừng tới TLN CHEAT! Tham gia Telegram để cập nhật và nhận hỗ trợ",
-    ["Beta version"]="Phiên bản Beta",
-    ["This is a test build. Features may change and bugs can happen."]="Đây là bản thử nghiệm. Tính năng có thể thay đổi và phát sinh lỗi.",
-    ["Rejoin"]="Vào lại",["Server hop"]="Đổi server",["Copy Job ID"]="Chép Job ID",
-    ["Unload hub"]="Tắt Hub",["Save config"]="Lưu cấu hình",["Hide UI"]="Ẩn Menu",
-    ["SESSION"]="PHIÊN CHƠI",["STOLEN"]="ĐÃ CƯỚP",["LAST EGG"]="TRỨNG CUỐI",
-    ["PLACED"]="ĐÃ ĐẶT",["HATCHED"]="ĐÃ ẤP",["NIGHT IN"]="ĐÊM SAU",
-    ["SESSION TIME"]="THỜI GIAN",["BEST STEAL"]="CƯỚP TỐT NHẤT",
-    ["EGG BAG"]="TÚI TRỨNG",["PET BAG"]="TÚI PET",["WHAT'S NEW"]="CÓ GÌ MỚI",
-    ["NEW"]="MỚI",["Event"]="Sự Kiện",["Search"]="Tìm kiếm",["Filter"]="Lọc tìm",
-    ["Steal"]="Cướp Trứng",["Auto Steal"]="Tự Động Cướp",["AUTO STEAL"]="TỰ ĐỘNG CƯỚP",
-    ["Auto steal"]="Tự động cướp",["Egg Predictor"]="Dự Đoán Trứng",
-    ["EGG PREDICTOR"]="DỰ ĐOÁN TRỨNG",["Go to egg"]="Di chuyển tới trứng",
-    ["Teleport to egg"]="Dịch chuyển tới trứng",["Tween"]="Bay (Tween)",
-    ["Delivery method"]="Cách mang về",["Fast tween speed"]="Tốc độ bay nhanh",
-    ["Tween speed"]="Tốc độ bay",["Steal missing index eggs"]="Cướp trứng thiếu trong Chỉ mục",
-    ["Steal back from players"]="Cướp lại từ người chơi",["Anti guard"]="Chống vệ sĩ",
-    ["Drop eggs at safe zone"]="Thả trứng ở vùng an toàn",["FILTER"]="BỘ LỌC",
-    ["Zones"]="Khu vực",["None"]="Không có",["Steal first"]="Ưu tiên cướp",
-    ["Best value"]="Giá trị cao nhất",["Lowest value"]="Giá trị thấp nhất",
-    ["Best rarity"]="Độ hiếm cao nhất",["Best mutation"]="Đột biến tốt nhất",
-    ["Biggest"]="Kích thước to nhất",["Closest"]="Khoảng cách gần nhất",
-    ["Mutations"]="Đột biến",["Rarities"]="Độ hiếm",["Only these eggs"]="Chỉ những trứng này",
-    ["Min value /s"]="Giá trị tối thiểu /s",["Off"]="Tắt",
-    ["Sell cheapest egg when bag is full"]="Bán trứng rẻ nhất khi đầy túi",
-    ["Keep lab eggs"]="Giữ lại trứng Lab",["AUTO HOP SERVER"]="TỰ ĐỔI MÁY CHỦ",
-    ["Only sell eggs below /s"]="Chỉ bán trứng dưới mức /s",["EGG SHOWCASE"]="TRƯNG BÀY TRỨNG",
-    ["Sort eggs"]="Sắp xếp trứng",["Preview card"]="Thẻ xem trước",
-    ["Pick one"]="Chọn một mục",["Pick any"]="Chọn bất kỳ",["Value"]="Giá trị",
-    ["Rarity"]="Độ hiếm",["Time left"]="Thời gian còn lại",["Default"]="Mặc định",
-    ["Clear"]="Xóa chọn",["Select all"]="Chọn tất cả",["SIZE"]="KÍCH CỠ",
-    ["WEIGHT"]="CÂN NẶNG",["READY"]="SẴN SÀNG",["IN BAG"]="TRONG TÚI",
-    ["GROWING"]="ĐANG LỚN",["Hatch now"]="Ấp ngay",["Hold egg"]="Cầm trứng",
-    ["Fly to egg"]="Bay tới trứng",
-    ["Enchanted Forest"]="Rừng Phù Phép (Enchanted Forest)",["Light Dark"]="Sáng Tối (Light Dark)",
-    ["Titan Temple"]="Đền Titan (Titan Temple)",["Cherry Blossom"]="Hoa Anh Đào (Cherry Blossom)",
-    ["Prehistoric"]="Tiền Sử (Prehistoric)",["Abyss Ocean"]="Đáy Đại Dương (Abyss Ocean)",
-    ["Volcano"]="Núi Lửa (Volcano)",["Snow"]="Tuyết (Snow)",["Jungle"]="Rừng Rậm (Jungle)",
-    ["Desert"]="Sa Mạc (Desert)",["Lake"]="Hồ Nước (Lake)",["Forest"]="Khu Rừng (Forest)",
-    ["Silver"]="Bạc (Silver)",["Rainbow"]="Cầu Vồng (Rainbow)",["Golden"]="Vàng (Golden)",
-    ["Fractured"]="Rạn Nứt (Fractured)",["Scrambled"]="Hỗn Loạn (Scrambled)",
-    ["Enchanted"]="Phù Phép (Enchanted)",["Nitro"]="Nitro",
-    ["SCRAMBLED"]="HỖN LOẠN",["NITRO"]="NITRO",["FRACTURED"]="RẠN NỨT",["ENCHANTED"]="PHÙ PHÉP",
-    ["Farm"]="Cày Cuốc",["Pen"]="Chuồng Ấp",["PEN"]="CHUỒNG ẤP",
-    ["Treadmill"]="Máy Tập",["TREADMILL"]="MÁY TẬP CHẠY",["Mutate"]="Đột Biến",
-    ["MUTATE"]="ĐỘT BIẾN",["Sell"]="Bán",["SELL"]="BÁN TỰ ĐỘNG",
-    ["Fuse"]="Dung Hợp",["FUSE"]="DUNG HỢP",["Priority"]="Ưu Tiên",
-    ["PRIORITY"]="THỨ TỰ ƯU TIÊN",["AUTO PLACE"]="TỰ ĐỘNG ĐẶT TRỨNG",
-    ["Auto place"]="Tự động đặt trứng",["Place when"]="Đặt khi",["Always"]="Luôn luôn",
-    ["Place first"]="Ưu tiên đặt",["AUTO HATCH"]="TỰ ĐỘNG ẤP TRỨNG",
-    ["Auto hatch"]="Tự động ấp trứng",["Equip best pets"]="Trang bị pet mạnh nhất",
-    ["READY NOW"]="SẴN SÀNG ẤP",["Auto treadmill"]="Tự chạy máy tập",
-    ["Auto upgrade treadmill"]="Tự nâng cấp máy tập",["PROGRESS"]="TIẾN TRÌNH",
-    ["Auto upgrade base"]="Tự nâng cấp căn cứ",["Auto buy trails"]="Tự mua vệt sáng",
-    ["Auto claim offline cash"]="Tự nhận tiền ngoại tuyến",
-    ["Auto claim index rewards"]="Tự nhận thưởng Chỉ mục",["AUTO MUTATE"]="TỰ ĐỘNG ĐỘT BIẾN",
-    ["Auto mutate"]="Tự động đột biến",["MUTATE FILTER"]="BỘ LỌC ĐỘT BIẾN",
-    ["Use items"]="Dùng vật phẩm",["Mutate first"]="Ưu tiên đột biến",
-    ["Auto buy Nitro"]="Tự mua Nitro",["PETS"]="THÚ CƯNG (PETS)",["EGGS"]="TRỨNG (EGGS)",
-    ["Auto sell pets"]="Tự động bán pet",["Auto sell eggs"]="Tự động bán trứng",
-    ["Sell rarities"]="Độ hiếm bán",["Never sell"]="Không bao giờ bán",
-    ["Only mutations"]="Chỉ bán đột biến",["Only below /s"]="Chỉ dưới mức /s",
-    ["Keep mutated"]="Giữ lại đồ đột biến",["Sell matching pets now"]="Bán các pet khớp ngay",
-    ["Sell matching eggs now"]="Bán các trứng khớp ngay",["LAB EGGS"]="TRỨNG PHÒNG LAB",
-    ["FAVORITE"]="YÊU THÍCH (KHÓA)",["Auto favorite"]="Tự động khóa bảo vệ",
-    ["Auto sell lab eggs"]="Tự động bán trứng Lab",
-    ["Sell matching lab eggs now"]="Bán trứng Lab khớp ngay",["Match"]="Điều kiện khớp",
-    ["All picked rules"]="Khớp tất cả quy tắc",["Any picked rule"]="Khớp bất kỳ quy tắc",
-    ["Always favorite"]="Luôn khóa loài này",["Favorite equipped"]="Khóa pet đang trang bị",
-    ["FUSE MACHINE"]="MÁY DUNG HỢP",["No 3 matching pets"]="Chưa đủ 3 pet cùng loại",
-    ["Auto fuse"]="Tự động dung hợp",["Fuse first"]="Ưu tiên dung hợp",
-    ["Lowest rarity"]="Độ hiếm thấp nhất",["Highest rarity"]="Độ hiếm cao nhất",
-    ["Use pets"]="Sử dụng pet",["Lowest value first"]="Giá trị thấp nhất trước",
-    ["Highest value first"]="Giá trị cao nhất trước",["Skip mutated"]="Bỏ qua pet đột biến",
-    ["Eject odd pets"]="Đẩy pet lẻ ra ngoài",["FUSE FILTER"]="BỘ LỌC DUNG HỢP",
-    ["Only these pets"]="Chỉ những pet này",["Never fuse"]="Không bao giờ dung hợp",
-    ["FUSE PREDICTOR"]="DỰ ĐOÁN DUNG HỢP",["SLOTS"]="Ô CHỨA",["STATUS"]="TRẠNG THÁI",
-    ["Waiting for pets"]="Đang chờ pet",["LIKELY SIZE"]="KÍCH CỠ DỰ KIẾN",
-    ["CHANCE"]="TỶ LỆ",["VALUE"]="GIÁ TRỊ",["BEST CASE"]="TỐT NHẤT CÓ THỂ",
-    ["TASK ORDER"]="THỨ TỰ TÁC VỤ",["DOING"]="ĐANG LÀM",["WAITING"]="ĐANG CHỜ",
-    ["Top goes first. A carried egg is always delivered first, and before the field opens every task waits in the safe zone."]="Mục ở trên làm trước. Trứng đang bê luôn được giao trước, và trước khi khu vực mở thì mọi tác vụ sẽ đợi ở vùng an toàn.",
-    ["Steal filter eggs"]="Cướp trứng theo bộ lọc",["Shooting Star"]="Bắt Sao Băng",
-    ["Racing Event"]="Sự Kiện Đua Xe",["Butterfly"]="Bắt Bướm",
-    ["Steal wisp eggs"]="Cướp trứng Wisp",["Wisp"]="Nhặt Wisp",
-    ["Steal missing index"]="Cướp trứng thiếu trong Chỉ mục",
-    ["Steal lab eggs"]="Cướp trứng phòng Lab",["Place"]="Đặt trứng vào chuồng",
-    ["Butterfly machine"]="Máy đổi Bướm",["Race"]="Đua Xe",["RACE"]="ĐUA XE",
-    ["Star"]="Sao Băng",["STAR"]="SAO BĂNG",["BUTTERFLY"]="BẮT BƯỚM",
-    ["Lab"]="Phòng Lab",["LAB"]="PHÒNG LAB",["AA"]="Admin (AA)",
-    ["RACING EVENT"]="SỰ KIỆN ĐUA XE",["NEXT RACE"]="ĐUA TIẾP THEO",
-    ["WINS"]="THẮNG",["TROPHIES"]="CÚP",["Auto race"]="Tự động đua xe",
-    ["Race speed"]="Tốc độ đua",["Lower it if wins do not count"]="Giảm tốc độ nếu thắng không được tính",
-    ["Use power-ups"]="Tự dùng vật phẩm tăng tốc",["REWARDS"]="PHẦN THƯỞNG",
-    ["Auto claim rewards"]="Tự nhận phần thưởng",["Auto equip racer"]="Tự trang bị xe đua",
-    ["Racer"]="Xe đua",["Best owned"]="Tốt nhất đang có",["Auto buy shop"]="Tự mua vật phẩm Shop",
-    ["Shop items"]="Vật phẩm Shop",["SHOOTING STAR"]="SAO BĂNG RƠI",["LANDS IN"]="RƠI SAU",
-    ["CATCH"]="BẮT SAO BĂNG",
-    ["A Shooting Star is rare and only you can catch yours. It lands in Cosmic, runs from you, and needs a 1.6 s hold."]="Sao Băng rất hiếm và chỉ bạn mới bắt được của mình. Nó rơi ở khu Vũ Trụ (Cosmic), chạy trốn bạn và cần nhấn giữ 1.6 giây.",
-    ["CAUGHT"]="ĐÃ BẮT",["EXPIRES IN"]="BIẾN MẤT SAU",
-    ["SLIPPED"]="TUỘT MẤT",["TRIES"]="SỐ LẦN THỬ",["DISTANCE"]="KHOẢNG CÁCH",
-    ["Auto catch shooting star"]="Tự động bắt sao băng",["BUTTERFLY BLOOM"]="MÙA BƯỚM NỞ",
-    ["Auto butterfly bloom"]="Tự động bắt bướm",["EMERALD"]="LỤC BẢO",
-    ["SAPPHIRE"]="LAM NGỌC",["AMETHYST"]="THẠCH ANH TÍM",["RADIANT"]="RỰC RỠ",
-    ["ESSENCE"]="TINH CHẤT",["Catch mode"]="Chế độ bắt",["Stand"]="Đứng yên",
-    ["Chase"]="Đuổi theo",["BUTTERFLY MACHINE"]="MÁY ĐỔI BƯỚM",
-    ["Auto trade up"]="Tự nâng cấp bậc bướm",["Trade"]="Giao dịch đổi",
-    ["Smart trade for essence"]="Đổi bướm lấy tinh chất thông minh",
-    ["Auto craft essence"]="Tự chế tạo tinh chất",["WISP COMPANION"]="ĐỒNG HÀNH WISP",
-    ["Catch priority"]="Ưu tiên bắt",["Rarest"]="Hiếm nhất",["Catch"]="Loại bướm bắt",
-    ["Radiant"]="Rực Rỡ (Radiant)",["Catch speed"]="Tốc độ bắt",
-    ["Auto wisp quest"]="Tự làm nhiệm vụ Wisp",["Auto banjo cricket"]="Tự bắt dế Banjo",
-    ["STAGE"]="GIAI ĐOẠN",["LAB ODDS"]="TỶ LỆ PHÒNG LAB",["BANNER"]="BĂNG RÔN",
-    ["ENDS IN"]="KẾT THÚC SAU",["BANNER CHANCE"]="TỶ LỆ BĂNG RÔN",["NEXT"]="TIẾP THEO",
-    ["Experimental Pets"]="Pet Thí Nghiệm",["Biohazard Pets"]="Pet Sinh Học",
-    ["Lab banners"]="Băng rôn phòng Lab",["Auto trade in"]="Tự động đổi trứng Lab",
-    ["Auto reroll recipe"]="Tự đổi lại công thức",["Place lab reward eggs"]="Đặt trứng thưởng từ Lab",
-    ["ADMIN ABUSE"]="LẠM DỤNG ADMIN (ABUSE)",["No admin boost right now"]="Hiện không có buff Admin nào",
-    ["Instant steal (Admin Treadmill)"]="Cướp tức thì (Máy tập Admin)",
-    ["Use admin treadmill"]="Tự dùng máy tập Admin",["CAPTURE THE EGG"]="CƯỚP TRỨNG SỰ KIỆN",
-    ["Auto capture event egg"]="Tự bắt trứng sự kiện",
-    ["Take it from the holder"]="Giật trứng từ người đang cầm",
-    ["Hold height"]="Độ cao giữ trứng",["Keep away"]="Khoảng cách né tránh",
-    ["MINIGAME EGGS"]="TRỨNG MINIGAME",
-    ["Waiting for Red Light Green Light or T-Rex Run"]="Đang chờ Đèn Đỏ Đèn Xanh hoặc Chạy Trốn T-Rex",
-    ["Auto steal minigame egg"]="Tự cướp trứng Minigame",["Player"]="Người Chơi",
-    ["ESP"]="Định Vị (ESP)",["Move"]="Di Chuyển",["MOVE"]="DI CHUYỂN",
-    ["Combat"]="Chiến Đấu",["COMBAT"]="CHIẾN ĐẤU",["FIELD EGGS"]="TRỨNG NGOÀI SÂN",
-    ["Egg ESP"]="ESP Trứng",["Show"]="Hiển thị",["Name"]="Tên",
-    ["Fixed size"]="Cố định kích cỡ",["OTHERS"]="MỤC KHÁC",
-    ["Pen egg ESP"]="ESP trứng trong chuồng",["Other pens ESP"]="ESP chuồng người khác",
-    ["Guard ESP"]="ESP Vệ sĩ",["Player ESP"]="ESP Người chơi",["ESP size"]="Kích cỡ ESP",
-    ["MOVEMENT"]="TỐC ĐỘ & DI CHUYỂN",["Speed boost"]="Tăng tốc chạy",
-    ["Boost speed"]="Tốc độ tăng thêm",["Infinite jump"]="Nhảy vô hạn",
-    ["God mode"]="Bất tử (God mode)",["PROTECTION"]="BẢO VỆ NHÂN VẬT",
-    ["Anti ragdoll"]="Chống ngã (Anti Ragdoll)",["Ignore traps"]="Bỏ qua bẫy",
-    ["Instant prompts"]="Tương tác nhấn giữ tức thì",["Anti AFK"]="Chống treo máy (Anti AFK)",
-    ["Invisible"]="Tàng hình",["AUTO HIT"]="TỰ ĐỘNG ĐÁNH",["Auto hit"]="Tự động đánh",
-    ["Hit who"]="Mục tiêu đánh",["Nearest player"]="Người chơi gần nhất",
-    ["Chosen player"]="Người chơi chỉ định",["Chase speed"]="Tốc độ đuổi theo",
-    ["HIT AURA"]="VÒNG ĐÁNH TỰ ĐỘNG",["Hit aura"]="Vòng đánh tự động (Hit Aura)",
-    ["Skip friends"]="Bỏ qua bạn bè",["WEAPONS"]="VŨ KHÍ",["Use weapons"]="Sử dụng vũ khí",
-    ["Hold each"]="Thời gian cầm mỗi món",["System"]="Hệ Thống",["Server"]="Máy Chủ",
-    ["SERVER"]="MÁY CHỦ",["Webhook"]="Webhook",["WEBHOOK"]="WEBHOOK",
-    ["Optimizer"]="Tối Ưu Hóa",["OPTIMIZER"]="TỐI ƯU HÓA (GIẢM LAG)",
-    ["Interface"]="Giao Diện",["Config"]="Cấu Hình",["Hop to"]="Chuyển tới server",
-    ["Least players"]="Ít người chơi nhất",["Hop server"]="Đổi máy chủ",["Hop"]="Đổi ngay",
-    ["Rejoin this server"]="Vào lại máy chủ này",["Copy"]="Sao chép",
-    ["JOIN AND STAY"]="VÀO PHÒNG & DUY TRÌ",["Job ID"]="Mã phòng (Job ID)",
-    ["Paste a Job ID"]="Dán mã Job ID vào đây",["Join that server"]="Vào máy chủ đó",
-    ["Join"]="Vào ngay",["Rejoin on kick"]="Tự vào lại khi bị văng/kick",
-    ["Auto load script"]="Tự chạy lại script khi chuyển server",
-    ["DISCORD WEBHOOK"]="WEBHOOK TELEGRAM",["Webhook URL"]="Đường dẫn Webhook",
-    ["Ping everyone"]="Tag @everyone",["WHAT TO POST"]="NỘI DUNG GỬI BÁO CÁO",
-    ["Post stolen eggs"]="Báo cáo trứng cướp được",["Post fused eggs"]="Báo cáo trứng dung hợp",
-    ["POSTED"]="ĐÃ GỬI",["Send a test post"]="Gửi tin nhắn thử nghiệm",
-    ["Test"]="Thử nghiệm",["Post when bag is full"]="Gửi thông báo khi đầy túi",
-    ["Ping user ID"]="Ping User ID",["Discord user ID"]="Nhập Telegram User ID",
-    ["Ping role ID"]="Ping Role ID",["Discord role ID"]="Nhập Telegram Role ID",
-    ["GRAPHICS"]="ĐỒ HỌA",["Low graphics"]="Đồ họa thấp (Tăng FPS)",
-    ["Disable 3D Render"]="Tắt kết xuất 3D (Treo máy)",["Background color"]="Màu nền màn hình",
-    ["Black"]="Màu Đen",["White"]="Màu Trắng",["Hide game UI"]="Ẩn giao diện gốc của Game",
-    ["FRAME RATE"]="TỐC ĐỘ KHUNG HÌNH (FPS)",["FPS cap"]="Giới hạn FPS",
-    ["Show FPS and ping"]="Hiện chỉ số FPS và Ping",["BASES"]="CĂN CỨ (BASES)",
-    ["Hide other players' pets and eggs"]="Ẩn pet và trứng của người chơi khác",
-    ["Hide my pets and eggs"]="Ẩn pet và trứng của bản thân",
-    ["Common"]="Phổ Thông (Common)",["Uncommon"]="Thường (Uncommon)",["Rare"]="Hiếm (Rare)",
-    ["Epic"]="Sử Thi (Epic)",["Legendary"]="Huyền Thoại (Legendary)",
-    ["Mythic"]="Thần Thoại (Mythic)",["Cosmic"]="Vũ Trụ (Cosmic)",
-    ["Secret"]="Bí Ẩn (Secret)",["Divine"]="Thánh Thần (Divine)",
-    ["Eternal"]="Vĩnh Cửu (Eternal)",
-    ["COMMON"]="PHỔ THÔNG",["UNCOMMON"]="THƯỜNG",["RARE"]="HIẾM",["EPIC"]="SỬ THI",
-    ["LEGENDARY"]="HUYỀN THOẠI",["MYTHIC"]="THẦN THOẠI",["COSMIC"]="VŨ TRỤ",
-    ["SECRET"]="BÍ ẨN",["DIVINE"]="THÁNH THẦN",["ETERNAL"]="VĨNH CỬU",
-    -- HALLOWEEN
-    ["HALLOWEEN DIMENSION"]="CHIỀU KHÔNG GIAN HALLOWEEN",
-    ["Auto steal Halloween eggs"]="Tự động cướp trứng Halloween",
-    ["Instant steal Halloween eggs"]="Cướp trứng Halloween tức thì",
-    ["Steal speed"]="Tốc độ cướp",["Halloween eggs"]="Trứng Halloween",
-    ["Halloween rarities"]="Độ hiếm Halloween",["Auto Pumpkin Moon"]="Tự động Pumpkin Moon",
-    ["Auto buy Halloween Dimension Egg"]="Tự mua trứng Halloween Dimension",
-    ["Walk speed"]="Tốc độ đi bộ",["MONSTERS"]="QUÁI VẬT",
-    ["Auto farm monsters"]="Tự động farm quái vật",["Monster order"]="Thứ tự quái vật",
-    ["PHANTOM EXPRESS"]="TÀU MA (PHANTOM EXPRESS)",["TRAIN"]="TÀU",["SOULS"]="LINH HỒN",
-    ["Not here"]="Không ở đây",["Auto Phantom Express"]="Tự động Phantom Express",
-    ["Auto vacuum Ghouler boss"]="Tự hút boss Ghouler",["Ghost target"]="Mục tiêu ma",
-    ["Rarest first"]="Hiếm nhất trước",["Auto trade souls"]="Tự động đổi linh hồn",
-    ["GHOST DOG AND FISHING"]="CHÓ MA VÀ CÂU CÁ",["QUEST"]="NHIỆM VỤ",
-    ["FISH CAUGHT"]="CÁ ĐÃ BẮT",["Done"]="Hoàn thành",
-    ["Auto Ghost Dog quest"]="Tự làm nhiệm vụ Chó Ma",["Auto fishing"]="Tự động câu cá",
-    ["Cast luck"]="Độ may mắn câu",["x1.5 Perfect"]="x1.5 Hoàn hảo",
-    ["CURSED ISLAND WARS"]="ĐẢO NGUYỀN RỦA (ISLAND WARS)",
-    ["Auto play Cursed Island Wars"]="Tự động chơi Cursed Island Wars",
-    ["Island Wars target"]="Mục tiêu Island Wars",["Enemies and base"]="Kẻ thù và căn cứ",
-    ["Teleport zones"]="Dịch chuyển theo khu vực",["Delivery speed"]="Tốc độ giao trứng",
-    ["Change if steal fails"]="Thay đổi nếu cướp thất bại",
-    ["Steal from other players"]="Cướp từ người chơi khác",
-    ["Instant steal"]="Cướp tức thì",["Admin treadmill"]="Máy tập Admin",
-    -- CONFIG
-    ["CONFIG"]="CẤU HÌNH",["PROFILES"]="HỒ SƠ CẤU HÌNH",["ACTIVE"]="ĐANG DÙNG",
-    ["SAVED CONFIGS"]="CẤU HÌNH ĐÃ LƯU",["New config name"]="Tên cấu hình mới",
-    ["Auto if empty"]="Tự đặt tên nếu trống",["Create config"]="Tạo cấu hình",
-    ["Create"]="Tạo",["Pick to delete"]="Chọn để xóa",["Delete picked"]="Xóa đã chọn",
-    ["Delete"]="Xóa",["Restore deleted"]="Khôi phục đã xóa",["Export config"]="Xuất cấu hình",
-    ["Import text"]="Nhập văn bản",["Paste config text"]="Dán văn bản cấu hình vào đây",
-    ["Import config"]="Nhập cấu hình",["Import"]="Nhập",
-    ["Set as active config"]="Đặt làm cấu hình đang dùng",["Set active"]="Đặt làm chính",
-    ["Save changes"]="Lưu thay đổi",["Save"]="Lưu",
-    ["Auto load"]="Tự động tải",["Auto save"]="Tự động lưu",
-    -- INTERFACE
-    ["INTERFACE"]="GIAO DIỆN",["UI scale"]="Tỷ lệ giao diện",
-    ["Show / hide UI"]="Hiện / Ẩn giao diện",["Opacity"]="Độ mờ",
-    ["Tone"]="Tông màu",["Dim the game"]="Làm tối màn hình game",["THEME"]="CHỦ ĐỀ MÀU",
-    ["Twilight"]="Hoàng Hôn",["Aurora"]="Cực Quang",["Ocean"]="Đại Dương",
-    ["Midnight"]="Nửa Đêm",["Sakura"]="Hoa Anh Đào",["Onyx"]="Đá Onyx",["Mono"]="Đơn Sắc",
-    ["GAME HUD"]="HUD GAME",["Steal panel button on game HUD"]="Nút bảng Cướp trên HUD game",
-    ["DEFAULTS"]="MẶC ĐỊNH",["Reset to defaults"]="Đặt lại mặc định",["Reset"]="Đặt lại",
-    ["Turn off all toggles"]="Tắt tất cả công tắc",["Turn off"]="Tắt hết",
-    ["QUICK BARS"]="THANH NHANH",["Show quick bars"]="Hiển thị thanh nhanh",
-    ["Keybinds"]="Phím tắt",["Bar size"]="Kích thước thanh",
-    ["PINS AND KEYBINDS"]="GHIM & PHÍM TẮT",["Find an option"]="Tìm tùy chọn",
-    ["All"]="Tất cả",["Pinned"]="Đã ghim",
-    ["Clear all quick bars"]="Xóa tất cả thanh nhanh",["Clear all keybinds"]="Xóa tất cả phím tắt",
-    ["Instant steps"]="Bước tức thì",["STEAL / AUTO STEAL"]="CƯỚP / TỰ ĐỘNG CƯỚP",
-    ["slider"]="thanh trượt",["+ PIN"]="+ GHIM",
-}
-
--- ---- EXACT ID (from TLN_CHEAT_FULL) ----
-local EXACT_MATCH_ID = {
-    ["Idle"]="Menganggur",["Waiting"]="Menunggu",["Nothing"]="Tidak ada",
-    ["Waiting in safe zone"]="Menunggu di zona aman",["Returning to safe zone"]="Kembali ke zona aman",
-    ["Returning home"]="Kembali ke rumah",["Going home"]="Pulang ke rumah",
-    ["Delivering egg"]="Mengantarkan telur",["Dropping egg"]="Menjatuhkan telur",
-    ["Dropping eggs"]="Menjatuhkan telur",["Selling eggs"]="Menjual telur",
-    ["Selling pets"]="Menjual pet",["Selling lab eggs"]="Menjual telur Lab",
-    ["Hatching eggs"]="Menetaskan telur",["Placing eggs"]="Menempatkan telur",
-    ["Mutating eggs"]="Mutasi telur",["Fusing pets"]="Menggabungkan pet",
-    ["Hopping server"]="Pindah server",["Rejoining"]="Bergabung kembali",
-    ["Avoiding guard"]="Menghindari penjaga",["Evading guard"]="Menghindari penjaga",
-    ["Using treadmill"]="Menggunakan treadmill",["Upgrading treadmill"]="Meningkatkan treadmill",
-    ["Upgrading base"]="Meningkatkan markas",["Claiming rewards"]="Mengklaim hadiah",
-    ["Claiming offline cash"]="Mengklaim uang offline",["Catching shooting star"]="Menangkap bintang jatuh",
-    ["Catching butterfly"]="Menangkap kupu-kupu",["Joining race"]="Bergabung balapan",
-    ["Racing"]="Sedang balapan",["Home"]="Beranda",["Dashboard"]="Dasbor",
-    ["Welcome back"]="Selamat datang kembali",["TLN CHEAT Discord"]="TLN CHEAT Discord",
-    ["Updates, keys, support"]="Update, kunci, dukungan",["Copy Invite"]="Salin Tautan Undangan",
-    ["Discord"]="Discord",["MONEY /S"]="UANG /DETIK",["OPEN"]="BUKA",
-    ["Welcome to TLN CHEAT 1.0.0! Join our Telegram for updates and support"]="Selamat datang di TLN CHEAT! Bergabunglah ke Telegram untuk update dan dukungan",
-    ["Beta version"]="Versi Beta",
-    ["This is a test build. Features may change and bugs can happen."]="Ini versi percobaan. Fitur bisa berubah dan bug bisa terjadi.",
-    ["Rejoin"]="Gabung Lagi",["Server hop"]="Pindah Server",["Copy Job ID"]="Salin Job ID",
-    ["Unload hub"]="Tutup Hub",["Save config"]="Simpan konfigurasi",["Hide UI"]="Sembunyikan Menu",
-    ["SESSION"]="SESI",["STOLEN"]="DICURI",["LAST EGG"]="TELUR TERAKHIR",
-    ["PLACED"]="DITEMPATKAN",["HATCHED"]="DITETASKAN",["NIGHT IN"]="MALAM DALAM",
-    ["SESSION TIME"]="WAKTU SESI",["BEST STEAL"]="CURIAN TERBAIK",
-    ["EGG BAG"]="TAS TELUR",["PET BAG"]="TAS PET",["WHAT'S NEW"]="APA YANG BARU",
-    ["NEW"]="BARU",["Event"]="Acara",["Search"]="Cari",["Filter"]="Filter",
-    ["Steal"]="Curi Telur",["Auto Steal"]="Curi Otomatis",["AUTO STEAL"]="CURI OTOMATIS",
-    ["Auto steal"]="Curi otomatis",["Egg Predictor"]="Prediksi Telur",
-    ["EGG PREDICTOR"]="PREDIKSI TELUR",["Go to egg"]="Pergi ke telur",
-    ["Teleport to egg"]="Teleport ke telur",["Tween"]="Terbang (Tween)",
-    ["Delivery method"]="Metode pengiriman",["Fast tween speed"]="Kecepatan terbang cepat",
-    ["Tween speed"]="Kecepatan terbang",["Steal missing index eggs"]="Curi telur indeks yang kurang",
-    ["Steal back from players"]="Curi kembali dari pemain",["Anti guard"]="Anti penjaga",
-    ["Drop eggs at safe zone"]="Jatuhkan telur di zona aman",["FILTER"]="FILTER",
-    ["Zones"]="Zona",["None"]="Tidak ada",["Steal first"]="Prioritas curi",
-    ["Best value"]="Nilai tertinggi",["Lowest value"]="Nilai terendah",
-    ["Best rarity"]="Kelangkaan terbaik",["Best mutation"]="Mutasi terbaik",
-    ["Biggest"]="Terbesar",["Closest"]="Terdekat",
-    ["Mutations"]="Mutasi",["Rarities"]="Kelangkaan",["Only these eggs"]="Hanya telur ini",
-    ["Min value /s"]="Nilai minimum /d",["Off"]="Mati",
-    ["Sell cheapest egg when bag is full"]="Jual telur termurah saat tas penuh",
-    ["Keep lab eggs"]="Simpan telur Lab",["AUTO HOP SERVER"]="PINDAH SERVER OTOMATIS",
-    ["Only sell eggs below /s"]="Jual telur di bawah /d saja",["EGG SHOWCASE"]="PAMERAN TELUR",
-    ["Sort eggs"]="Urutkan telur",["Preview card"]="Kartu pratinjau",
-    ["Pick one"]="Pilih satu",["Pick any"]="Pilih sembarang",["Value"]="Nilai",
-    ["Rarity"]="Kelangkaan",["Time left"]="Sisa waktu",["Default"]="Bawaan",
-    ["Clear"]="Hapus pilihan",["Select all"]="Pilih semua",["SIZE"]="UKURAN",
-    ["WEIGHT"]="BERAT",["READY"]="SIAP",["IN BAG"]="DI TAS",
-    ["GROWING"]="TUMBUH",["Hatch now"]="Tetaskan sekarang",["Hold egg"]="Pegang telur",
-    ["Fly to egg"]="Terbang ke telur",
-    ["Farm"]="Pertanian",["Pen"]="Kandang",["PEN"]="KANDANG",
-    ["Treadmill"]="Treadmill",["TREADMILL"]="TREADMILL",["Mutate"]="Mutasi",
-    ["MUTATE"]="MUTASI",["Sell"]="Jual",["SELL"]="JUAL OTOMATIS",
-    ["Fuse"]="Gabung",["FUSE"]="GABUNGKAN",["Priority"]="Prioritas",
-    ["PRIORITY"]="URUTAN PRIORITAS",["AUTO PLACE"]="TEMPATKAN OTOMATIS",
-    ["Auto place"]="Tempatkan otomatis",["Place when"]="Tempatkan saat",["Always"]="Selalu",
-    ["Place first"]="Prioritas tempatkan",["AUTO HATCH"]="TETASKAN OTOMATIS",
-    ["Auto hatch"]="Tetaskan otomatis",["Equip best pets"]="Pasang pet terbaik",
-    ["READY NOW"]="SIAP DITETASKAN",["Auto treadmill"]="Treadmill otomatis",
-    ["Auto upgrade treadmill"]="Tingkatkan treadmill otomatis",["PROGRESS"]="PROGRES",
-    ["Auto upgrade base"]="Tingkatkan markas otomatis",["Auto buy trails"]="Beli jejak otomatis",
-    ["Auto claim offline cash"]="Klaim uang offline otomatis",
-    ["Auto claim index rewards"]="Klaim hadiah indeks otomatis",["AUTO MUTATE"]="MUTASI OTOMATIS",
-    ["Auto mutate"]="Mutasi otomatis",["MUTATE FILTER"]="FILTER MUTASI",
-    ["Use items"]="Gunakan item",["Mutate first"]="Prioritas mutasi",
-    ["Auto buy Nitro"]="Beli Nitro otomatis",["PETS"]="PET",["EGGS"]="TELUR",
-    ["Auto sell pets"]="Jual pet otomatis",["Auto sell eggs"]="Jual telur otomatis",
-    ["Sell rarities"]="Kelangkaan yang dijual",["Never sell"]="Jangan pernah jual",
-    ["Only mutations"]="Hanya mutasi",["Only below /s"]="Hanya di bawah /d",
-    ["Keep mutated"]="Simpan yang bermutasi",["Sell matching pets now"]="Jual pet yang cocok sekarang",
-    ["Sell matching eggs now"]="Jual telur yang cocok sekarang",["LAB EGGS"]="TELUR LAB",
-    ["FAVORITE"]="FAVORIT (KUNCI)",["Auto favorite"]="Favoritkan otomatis",
-    ["Auto sell lab eggs"]="Jual telur Lab otomatis",
-    ["Sell matching lab eggs now"]="Jual telur Lab yang cocok sekarang",["Match"]="Kondisi cocok",
-    ["All picked rules"]="Semua aturan terpilih",["Any picked rule"]="Aturan apa pun terpilih",
-    ["Always favorite"]="Selalu favoritkan spesies ini",["Favorite equipped"]="Favoritkan pet yang dipakai",
-    ["FUSE MACHINE"]="MESIN GABUNG",["No 3 matching pets"]="Belum ada 3 pet yang cocok",
-    ["Auto fuse"]="Gabung otomatis",["Fuse first"]="Prioritas gabung",
-    ["Lowest rarity"]="Kelangkaan terendah",["Highest rarity"]="Kelangkaan tertinggi",
-    ["Use pets"]="Gunakan pet",["Lowest value first"]="Nilai terendah dulu",
-    ["Highest value first"]="Nilai tertinggi dulu",["Skip mutated"]="Lewati pet bermutasi",
-    ["Eject odd pets"]="Keluarkan pet ganjil",["FUSE FILTER"]="FILTER GABUNG",
-    ["Only these pets"]="Hanya pet ini",["Never fuse"]="Jangan pernah gabung",
-    ["FUSE PREDICTOR"]="PREDIKSI GABUNG",["SLOTS"]="SLOT",["STATUS"]="STATUS",
-    ["Waiting for pets"]="Menunggu pet",["LIKELY SIZE"]="UKURAN PERKIRAAN",
-    ["CHANCE"]="PELUANG",["VALUE"]="NILAI",["BEST CASE"]="KASUS TERBAIK",
-    ["TASK ORDER"]="URUTAN TUGAS",["DOING"]="SEDANG",["WAITING"]="MENUNGGU",
-    ["Steal filter eggs"]="Curi telur dengan filter",["Shooting Star"]="Bintang Jatuh",
-    ["Racing Event"]="Event Balapan",["Butterfly"]="Tangkap Kupu-kupu",
-    ["Steal wisp eggs"]="Curi telur Wisp",["Wisp"]="Ambil Wisp",
-    ["Steal missing index"]="Curi telur indeks yang kurang",
-    ["Steal lab eggs"]="Curi telur Lab",["Place"]="Tempatkan telur di kandang",
-    ["Butterfly machine"]="Mesin Kupu-kupu",["Race"]="Balapan",["RACE"]="BALAPAN",
-    ["Star"]="Bintang Jatuh",["STAR"]="BINTANG JATUH",["BUTTERFLY"]="KUPU-KUPU",
-    ["Lab"]="Lab",["LAB"]="LAB",["AA"]="Admin (AA)",
-    ["RACING EVENT"]="EVENT BALAPAN",["NEXT RACE"]="BALAPAN BERIKUTNYA",
-    ["WINS"]="MENANG",["TROPHIES"]="TROFI",["Auto race"]="Balapan otomatis",
-    ["Race speed"]="Kecepatan balapan",["Lower it if wins do not count"]="Turunkan jika menang tidak dihitung",
-    ["Use power-ups"]="Gunakan power-up otomatis",["REWARDS"]="HADIAH",
-    ["Auto claim rewards"]="Klaim hadiah otomatis",["Auto equip racer"]="Pasang racer otomatis",
-    ["Racer"]="Racer",["Best owned"]="Terbaik yang dimiliki",["Auto buy shop"]="Beli item toko otomatis",
-    ["Shop items"]="Item toko",["SHOOTING STAR"]="BINTANG JATUH",["LANDS IN"]="MENDARAT DALAM",
-    ["CATCH"]="TANGKAP",["CAUGHT"]="TERTANGKAP",["EXPIRES IN"]="KEDALUWARSA DALAM",
-    ["SLIPPED"]="TERLEWAT",["TRIES"]="PERCOBAAN",["DISTANCE"]="JARAK",
-    ["Auto catch shooting star"]="Tangkap bintang jatuh otomatis",["BUTTERFLY BLOOM"]="MEKAR KUPU-KUPU",
-    ["Auto butterfly bloom"]="Tangkap kupu-kupu otomatis",["EMERALD"]="ZAMRUD",
-    ["SAPPHIRE"]="SAFIR",["AMETHYST"]="AMETIS",["RADIANT"]="BERCAHAYA",
-    ["ESSENCE"]="ESENSI",["Catch mode"]="Mode tangkap",["Stand"]="Diam",
-    ["Chase"]="Kejar",["BUTTERFLY MACHINE"]="MESIN KUPU-KUPU",
-    ["Auto trade up"]="Tingkatkan kupu-kupu otomatis",["Trade"]="Tukar",
-    ["Smart trade for essence"]="Tukar kupu-kupu untuk esensi cerdas",
-    ["Auto craft essence"]="Buat esensi otomatis",["WISP COMPANION"]="TEMAN WISP",
-    ["Catch priority"]="Prioritas tangkap",["Rarest"]="Paling langka",["Catch"]="Jenis kupu-kupu",
-    ["Radiant"]="Bercahaya (Radiant)",["Catch speed"]="Kecepatan tangkap",
-    ["Auto wisp quest"]="Quest Wisp otomatis",["Auto banjo cricket"]="Tangkap jangkrik Banjo otomatis",
-    ["STAGE"]="TAHAP",["LAB ODDS"]="PELUANG LAB",["BANNER"]="BANNER",
-    ["ENDS IN"]="BERAKHIR DALAM",["BANNER CHANCE"]="PELUANG BANNER",["NEXT"]="BERIKUTNYA",
-    ["Experimental Pets"]="Pet Eksperimental",["Biohazard Pets"]="Pet Biohazard",
-    ["Lab banners"]="Banner Lab",["Auto trade in"]="Tukar telur Lab otomatis",
-    ["Auto reroll recipe"]="Acak ulang resep otomatis",["Place lab reward eggs"]="Tempatkan telur hadiah Lab",
-    ["ADMIN ABUSE"]="PENYALAHGUNAAN ADMIN",["No admin boost right now"]="Tidak ada buff Admin saat ini",
-    ["Instant steal (Admin Treadmill)"]="Curi instan (Treadmill Admin)",
-    ["Use admin treadmill"]="Gunakan treadmill Admin",["CAPTURE THE EGG"]="REBUT TELUR EVENT",
-    ["Auto capture event egg"]="Rebut telur event otomatis",
-    ["Take it from the holder"]="Ambil dari yang memegang",
-    ["Hold height"]="Ketinggian pegang telur",["Keep away"]="Jarak menghindari",
-    ["MINIGAME EGGS"]="TELUR MINIGAME",
-    ["Waiting for Red Light Green Light or T-Rex Run"]="Menunggu Lampu Merah Hijau atau Lari T-Rex",
-    ["Auto steal minigame egg"]="Curi telur Minigame otomatis",["Player"]="Pemain",
-    ["ESP"]="ESP",["Move"]="Bergerak",["MOVE"]="BERGERAK",
-    ["Combat"]="Tempur",["COMBAT"]="TEMPUR",["FIELD EGGS"]="TELUR LAPANGAN",
-    ["Egg ESP"]="ESP Telur",["Show"]="Tampilkan",["Name"]="Nama",
-    ["Fixed size"]="Ukuran tetap",["OTHERS"]="LAINNYA",
-    ["Pen egg ESP"]="ESP telur kandang",["Other pens ESP"]="ESP kandang pemain lain",
-    ["Guard ESP"]="ESP Penjaga",["Player ESP"]="ESP Pemain",["ESP size"]="Ukuran ESP",
-    ["MOVEMENT"]="KECEPATAN & GERAK",["Speed boost"]="Percepat lari",
-    ["Boost speed"]="Tambah kecepatan",["Infinite jump"]="Lompat tak terbatas",
-    ["God mode"]="Mode dewa (God mode)",["PROTECTION"]="PERLINDUNGAN KARAKTER",
-    ["Anti ragdoll"]="Anti jatuh",["Ignore traps"]="Abaikan jebakan",
-    ["Instant prompts"]="Interaksi tahan langsung",["Anti AFK"]="Anti AFK",
-    ["Invisible"]="Tidak terlihat",["AUTO HIT"]="SERANG OTOMATIS",["Auto hit"]="Serang otomatis",
-    ["Hit who"]="Target serang",["Nearest player"]="Pemain terdekat",
-    ["Chosen player"]="Pemain yang dipilih",["Chase speed"]="Kecepatan kejar",
-    ["HIT AURA"]="AURA SERANG",["Hit aura"]="Aura serang otomatis",
-    ["Skip friends"]="Lewati teman",["WEAPONS"]="SENJATA",["Use weapons"]="Gunakan senjata",
-    ["Hold each"]="Waktu pegang tiap item",["System"]="Sistem",["Server"]="Server",
-    ["SERVER"]="SERVER",["Webhook"]="Webhook",["WEBHOOK"]="WEBHOOK",
-    ["Optimizer"]="Pengoptimal",["OPTIMIZER"]="PENGOPTIMAL (KURANGI LAG)",
-    ["Interface"]="Antarmuka",["Config"]="Konfigurasi",["Hop to"]="Pindah ke server",
-    ["Least players"]="Pemain paling sedikit",["Hop server"]="Pindah server",["Hop"]="Pindah sekarang",
-    ["Rejoin this server"]="Bergabung kembali ke server ini",["Copy"]="Salin",
-    ["JOIN AND STAY"]="BERGABUNG & TETAP",["Job ID"]="Job ID",
-    ["Paste a Job ID"]="Tempel Job ID di sini",["Join that server"]="Masuk server itu",
-    ["Join"]="Masuk sekarang",["Rejoin on kick"]="Gabung lagi saat dikick",
-    ["Auto load script"]="Muat ulang script saat pindah server",
-    ["DISCORD WEBHOOK"]="WEBHOOK DISCORD",["Webhook URL"]="URL Webhook",
-    ["Ping everyone"]="Tag @everyone",["WHAT TO POST"]="ISI LAPORAN",
-    ["Post stolen eggs"]="Laporkan telur yang dicuri",["Post fused eggs"]="Laporkan telur yang digabung",
-    ["POSTED"]="TERKIRIM",["Send a test post"]="Kirim pesan uji",
-    ["Test"]="Uji coba",["Post when bag is full"]="Kirim notif saat tas penuh",
-    ["Ping user ID"]="Ping User ID",["Discord user ID"]="Masukkan Discord User ID",
-    ["Ping role ID"]="Ping Role ID",["Discord role ID"]="Masukkan Discord Role ID",
-    ["GRAPHICS"]="GRAFIS",["Low graphics"]="Grafis rendah (Tingkatkan FPS)",
-    ["Disable 3D Render"]="Matikan render 3D (AFK)",["Background color"]="Warna latar layar",
-    ["Black"]="Hitam",["White"]="Putih",["Hide game UI"]="Sembunyikan UI bawaan game",
-    ["FRAME RATE"]="KECEPATAN FRAME (FPS)",["FPS cap"]="Batas FPS",
-    ["Show FPS and ping"]="Tampilkan FPS dan Ping",["BASES"]="MARKAS",
-    ["Hide other players' pets and eggs"]="Sembunyikan pet dan telur pemain lain",
-    ["Hide my pets and eggs"]="Sembunyikan pet dan telur sendiri",
-    ["Common"]="Umum (Common)",["Uncommon"]="Tidak Umum (Uncommon)",["Rare"]="Langka (Rare)",
-    ["Epic"]="Epik (Epic)",["Legendary"]="Legendaris (Legendary)",
-    ["Mythic"]="Mitos (Mythic)",["Cosmic"]="Kosmik (Cosmic)",
-    ["Secret"]="Rahasia (Secret)",["Divine"]="Ilahi (Divine)",["Eternal"]="Abadi (Eternal)",
-    ["COMMON"]="UMUM",["UNCOMMON"]="TIDAK UMUM",["RARE"]="LANGKA",["EPIC"]="EPIK",
-    ["LEGENDARY"]="LEGENDARIS",["MYTHIC"]="MITOS",["COSMIC"]="KOSMIK",
-    ["SECRET"]="RAHASIA",["DIVINE"]="ILAHI",["ETERNAL"]="ABADI",
-    ["HALLOWEEN DIMENSION"]="DIMENSI HALLOWEEN",
-    ["Auto steal Halloween eggs"]="Curi telur Halloween otomatis",
-    ["Instant steal Halloween eggs"]="Curi telur Halloween instan",
-    ["Steal speed"]="Kecepatan curi",["Halloween eggs"]="Telur Halloween",
-    ["Halloween rarities"]="Kelangkaan Halloween",["Auto Pumpkin Moon"]="Pumpkin Moon otomatis",
-    ["Auto buy Halloween Dimension Egg"]="Beli telur Halloween Dimension otomatis",
-    ["Walk speed"]="Kecepatan jalan",["MONSTERS"]="MONSTER",
-    ["Auto farm monsters"]="Farm monster otomatis",["Monster order"]="Urutan monster",
-    ["PHANTOM EXPRESS"]="KERETA HANTU (PHANTOM EXPRESS)",["TRAIN"]="KERETA",["SOULS"]="JIWA",
-    ["Not here"]="Tidak di sini",["Auto Phantom Express"]="Phantom Express otomatis",
-    ["Auto vacuum Ghouler boss"]="Hisap boss Ghouler otomatis",["Ghost target"]="Target hantu",
-    ["Rarest first"]="Paling langka dulu",["Auto trade souls"]="Tukar jiwa otomatis",
-    ["GHOST DOG AND FISHING"]="ANJING HANTU DAN MEMANCING",["QUEST"]="MISI",
-    ["FISH CAUGHT"]="IKAN DITANGKAP",["Done"]="Selesai",
-    ["Auto Ghost Dog quest"]="Misi Anjing Hantu otomatis",["Auto fishing"]="Memancing otomatis",
-    ["Cast luck"]="Keberuntungan lempar",["x1.5 Perfect"]="x1.5 Sempurna",
-    ["CURSED ISLAND WARS"]="PERANG PULAU TERKUTUK",
-    ["Auto play Cursed Island Wars"]="Main Perang Pulau Terkutuk otomatis",
-    ["Island Wars target"]="Target Perang Pulau",["Enemies and base"]="Musuh dan markas",
-    ["Teleport zones"]="Teleport per zona",["Delivery speed"]="Kecepatan antar telur",
-    ["Change if steal fails"]="Ganti jika curi gagal",
-    ["Steal from other players"]="Curi dari pemain lain",
-    ["Instant steal"]="Curi instan",["Admin treadmill"]="Treadmill Admin",
-    ["CONFIG"]="KONFIGURASI",["PROFILES"]="PROFIL KONFIGURASI",["ACTIVE"]="AKTIF",
-    ["SAVED CONFIGS"]="KONFIGURASI TERSIMPAN",["New config name"]="Nama konfigurasi baru",
-    ["Auto if empty"]="Otomatis jika kosong",["Create config"]="Buat konfigurasi",
-    ["Create"]="Buat",["Pick to delete"]="Pilih untuk hapus",
-    ["Delete picked"]="Hapus yang dipilih",["Delete"]="Hapus",
-    ["Restore deleted"]="Pulihkan yang dihapus",["Export config"]="Ekspor konfigurasi",
-    ["Import text"]="Impor teks",["Paste config text"]="Tempel teks konfigurasi di sini",
-    ["Import config"]="Impor konfigurasi",["Import"]="Impor",
-    ["Set as active config"]="Jadikan konfigurasi aktif",["Set active"]="Jadikan aktif",
-    ["Save changes"]="Simpan perubahan",["Save"]="Simpan",
-    ["Auto load"]="Muat otomatis",["Auto save"]="Simpan otomatis",
-    ["INTERFACE"]="ANTARMUKA",["UI scale"]="Skala antarmuka",
-    ["Show / hide UI"]="Tampilkan / Sembunyikan antarmuka",["Opacity"]="Opasitas",
-    ["Tone"]="Nada warna",["Dim the game"]="Gelapkan layar game",["THEME"]="TEMA WARNA",
-    ["Twilight"]="Senja",["Aurora"]="Aurora",["Ocean"]="Samudra",
-    ["Midnight"]="Tengah Malam",["Sakura"]="Sakura",["Onyx"]="Onyx",["Mono"]="Mono",
-    ["GAME HUD"]="HUD GAME",["Steal panel button on game HUD"]="Tombol panel Curi di HUD game",
-    ["DEFAULTS"]="BAWAAN",["Reset to defaults"]="Setel ulang ke bawaan",
-    ["Reset"]="Setel Ulang",["Turn off all toggles"]="Matikan semua toggle",
-    ["Turn off"]="Matikan semua",["QUICK BARS"]="BILAH CEPAT",
-    ["Show quick bars"]="Tampilkan bilah cepat",["Keybinds"]="Pintasan tombol",
-    ["Bar size"]="Ukuran bilah",["PINS AND KEYBINDS"]="PIN & PINTASAN",
-    ["Find an option"]="Cari opsi",["All"]="Semua",["Pinned"]="Disematkan",
-    ["Clear all quick bars"]="Hapus semua bilah cepat",["Clear all keybinds"]="Hapus semua pintasan",
-    ["Instant steps"]="Langkah instan",["STEAL / AUTO STEAL"]="CURI / CURI OTOMATIS",
-    ["Ping user ID"]="Ping User ID",["Discord user ID"]="Masukkan Discord User ID",
-    ["Ping role ID"]="Ping Role ID",["Discord role ID"]="Masukkan Discord Role ID",
-}
-
--- ---- PATTERNS ID (from TLN_CHEAT_FULL) ----
-local STATUS_ACTION_PATTERNS_ID = {
-    {pat="^[Cc]arrying (.+) to safe zone$",rep="Membawa %1 ke zona aman"},
-    {pat="^[Cc]arrying (.+) to base$",rep="Membawa %1 ke markas"},
-    {pat="^[Cc]arrying (.+) to pen$",rep="Membawa %1 ke kandang"},
-    {pat="^[Cc]arrying (.+) home$",rep="Membawa %1 ke rumah"},
-    {pat="^[Cc]arrying (.+)$",rep="Membawa %1"},
-    {pat="^[Dd]elivering (.+) to (.+)$",rep="Mengantarkan %1 ke %2"},
-    {pat="^[Dd]elivering (.+) home$",rep="Mengantarkan %1 ke rumah"},
-    {pat="^[Dd]elivering (.+)$",rep="Mengantarkan %1"},
-    {pat="^[Ss]tealing (.+) from (.+)$",rep="Mencuri %1 dari %2"},
-    {pat="^[Ss]tealing (.+)$",rep="Mencuri %1"},
-    {pat="^[Tt]weening to (.+)$",rep="Terbang ke %1"},
-    {pat="^[Tt]eleporting to (.+)$",rep="Teleport ke %1"},
-    {pat="^[Gg]oing to (.+)$",rep="Pergi ke %1"},
-    {pat="^[Mm]oving to (.+)$",rep="Bergerak ke %1"},
-    {pat="^[Pp]lacing (.+)$",rep="Menempatkan %1"},
-    {pat="^[Hh]atching (.+)$",rep="Menetaskan %1"},
-    {pat="^[Ss]elling (.+)$",rep="Menjual %1"},
-    {pat="^[Ff]using (.+)$",rep="Menggabungkan %1"},
-    {pat="^[Cc]atching (.+)$",rep="Menangkap %1"},
-    {pat="^[Ww]aiting for (.+)$",rep="Menunggu %1"},
-}
-local FALLBACK_VERB_PREFIX_ID = {
-    ["Carrying "]="Membawa ",["Delivering "]="Mengantarkan ",["Stealing "]="Mencuri ",
-    ["Going "]="Pergi ",["Tweening "]="Terbang ",["Teleporting "]="Teleport ke ",
-    ["Moving "]="Bergerak ",["Placing "]="Menempatkan ",["Hatching "]="Menetaskan ",
-    ["Mutating "]="Mutasi ",["Selling "]="Menjual ",["Fusing "]="Menggabungkan ",
-    ["Catching "]="Menangkap ",["Waiting "]="Menunggu ",["Claiming "]="Mengklaim ",
-    ["Upgrading "]="Meningkatkan ",["Buying "]="Membeli ",["Collecting "]="Mengumpulkan ",
-    ["Dropping "]="Menjatuhkan ",["Returning "]="Kembali ",["Avoiding "]="Menghindari ",
-}
-local DYNAMIC_PATTERNS_ID = {
-    {pat="^QUICK BAR (%d+)$",rep="BILAH CEPAT %1"},
-    {pat="^ALL (%d+)$",rep="SEMUA %1"},
-    {pat="^READY (%d+)$",rep="SIAP %1"},
-    {pat="^GROWING (%d+)$",rep="TUMBUH %1"},
-    {pat="^IN BAG (%d+)$",rep="DI TAS %1"},
-}
-
--- ---- PATTERNS VI (merged – FULL base + Beta extras) ----
-local STATUS_ACTION_PATTERNS_VI = {
-    {pat="^[Cc]arrying (.+) to safe zone$",rep="Đang mang %1 về vùng an toàn"},
-    {pat="^[Cc]arrying (.+) to base$",rep="Đang mang %1 về căn cứ"},
-    {pat="^[Cc]arrying (.+) to pen$",rep="Đang mang %1 về chuồng"},
-    {pat="^[Cc]arrying (.+) home$",rep="Đang mang %1 về nhà"},
-    {pat="^[Cc]arrying (.+)$",rep="Đang bê %1"},
-    {pat="^[Bb]ringing (.+) home$",rep="Đang mang %1 về nhà"},
-    {pat="^[Bb]ringing (.+)$",rep="Đang mang %1"},
-    {pat="^[Dd]elivering (.+) to (.+)$",rep="Đang giao %1 tới %2"},
-    {pat="^[Dd]elivering (.+) home$",rep="Đang giao %1 về nhà"},
-    {pat="^[Dd]elivering (.+)$",rep="Đang giao %1"},
-    {pat="^[Tt]aking (.+) from (.+)$",rep="Đang giật %1 từ %2"},
-    {pat="^[Tt]aking (.+) home$",rep="Đang đem %1 về nhà"},
-    {pat="^[Tt]aking (.+)$",rep="Đang lấy %1"},
-    {pat="^[Ss]tealing (.+) from (.+)$",rep="Đang cướp %1 từ %2"},
-    {pat="^[Ss]tealing (.+)$",rep="Đang cướp %1"},
-    {pat="^[Gg]rabbing (.+)$",rep="Đang chộp lấy %1"},
-    {pat="^[Pp]icking up (.+)$",rep="Đang nhặt %1"},
-    {pat="^[Cc]ollecting (.+)$",rep="Đang thu thập %1"},
-    {pat="^[Hh]olding (.+)$",rep="Đang giữ %1"},
-    {pat="^[Cc]apturing (.+)$",rep="Đang bắt giữ %1"},
-    {pat="^[Dd]ropping (.+) at (.+)$",rep="Đang thả %1 tại %2"},
-    {pat="^[Dd]ropping (.+)$",rep="Đang thả %1"},
-    {pat="^[Tt]weening to (.+)$",rep="Đang bay tới %1"},
-    {pat="^[Tt]eleporting to (.+)$",rep="Đang dịch chuyển tới %1"},
-    {pat="^[Ff]lying to (.+)$",rep="Đang bay tới %1"},
-    {pat="^[Ww]alking to (.+)$",rep="Đang đi tới %1"},
-    {pat="^[Rr]unning to (.+)$",rep="Đang chạy tới %1"},
-    {pat="^[Gg]oing to (.+)$",rep="Đang đi tới %1"},
-    {pat="^[Mm]oving to (.+)$",rep="Đang di chuyển tới %1"},
-    {pat="^[Rr]eturning to (.+)$",rep="Đang quay về %1"},
-    {pat="^[Hh]eading to (.+)$",rep="Đang hướng tới %1"},
-    {pat="^[Pp]lacing (.+)$",rep="Đang đặt %1"},
-    {pat="^[Hh]atching (.+)$",rep="Đang ấp %1"},
-    {pat="^[Mm]utating (.+)$",rep="Đang đột biến %1"},
-    {pat="^[Ss]elling (.+)$",rep="Đang bán %1"},
-    {pat="^[Ff]using (.+)$",rep="Đang dung hợp %1"},
-    {pat="^[Uu]pgrading (.+)$",rep="Đang nâng cấp %1"},
-    {pat="^[Bb]uying (.+)$",rep="Đang mua %1"},
-    {pat="^[Cc]laiming (.+)$",rep="Đang nhận %1"},
-    {pat="^[Ee]quipping (.+)$",rep="Đang trang bị %1"},
-    {pat="^[Ff]avoriting (.+)$",rep="Đang khóa bảo vệ %1"},
-    {pat="^[Ee]jecting (.+)$",rep="Đang đẩy %1 ra"},
-    {pat="^[Cc]atching (.+)$",rep="Đang bắt %1"},
-    {pat="^[Cc]hasing (.+)$",rep="Đang đuổi theo %1"},
-    {pat="^[Aa]ttacking (.+)$",rep="Đang tấn công %1"},
-    {pat="^[Hh]itting (.+)$",rep="Đang đánh %1"},
-    {pat="^[Kk]illing (.+)$",rep="Đang hạ %1"},
-    {pat="^[Tt]rading (.+) for (.+)$",rep="Đang đổi %1 lấy %2"},
-    {pat="^[Tt]rading in (.+)$",rep="Đang đổi %1"},
-    {pat="^[Tt]rading (.+)$",rep="Đang giao dịch %1"},
-    {pat="^[Cc]rafting (.+)$",rep="Đang chế tạo %1"},
-    {pat="^[Rr]erolling (.+)$",rep="Đang đổi lại %1"},
-    {pat="^[Aa]voiding (.+)$",rep="Đang né %1"},
-    {pat="^[Ee]vading (.+)$",rep="Đang tránh %1"},
-    {pat="^[Ff]arming (.+)$",rep="Đang cày %1"},
-    {pat="^[Uu]sing (.+)$",rep="Đang dùng %1"},
-    {pat="^[Jj]oining (.+)$",rep="Đang tham gia %1"},
-    {pat="^[Hh]opping (.+)$",rep="Đang đổi %1"},
-    {pat="^[Ww]aiting for (.+)$",rep="Đang chờ %1"},
-    {pat="^[Ww]aiting in (.+)$",rep="Đang đợi ở %1"},
-    {pat="^[Ww]aiting %((.+)%)$",rep="Đang chờ (%1)"},
-    {pat="^[Ss]earching for (.+)$",rep="Đang tìm %1"},
-    {pat="^[Ll]ooking for (.+)$",rep="Đang tìm %1"},
-}
-local FALLBACK_VERB_PREFIX_VI = {
-    ["Carrying "]="Đang mang ",["Delivering "]="Đang giao ",["Stealing "]="Đang cướp ",
-    ["Going "]="Đang đi ",["Tweening "]="Đang bay ",["Teleporting "]="Đang dịch chuyển ",
-    ["Moving "]="Đang di chuyển ",["Walking "]="Đang đi bộ ",["Running "]="Đang chạy ",
-    ["Flying "]="Đang bay ",["Placing "]="Đang đặt ",["Hatching "]="Đang ấp ",
-    ["Mutating "]="Đang đột biến ",["Selling "]="Đang bán ",["Fusing "]="Đang dung hợp ",
-    ["Catching "]="Đang bắt ",["Chasing "]="Đang đuổi theo ",["Waiting "]="Đang chờ ",
-    ["Searching "]="Đang tìm ",["Claiming "]="Đang nhận ",["Upgrading "]="Đang nâng cấp ",
-    ["Buying "]="Đang mua ",["Trading "]="Đang đổi ",["Crafting "]="Đang chế tạo ",
-    ["Collecting "]="Đang thu thập ",["Holding "]="Đang giữ ",["Dropping "]="Đang thả ",
-    ["Returning "]="Đang quay về ",["Avoiding "]="Đang né ",["Evading "]="Đang né ",
-    ["Attacking "]="Đang đánh ",["Hitting "]="Đang đánh ",["Farming "]="Đang cày ",
-}
-local DYNAMIC_PATTERNS_VI = {
-    {pat="^QUICK BAR (%d+)$",rep="THANH NHANH %1"},
-    {pat="Venyx(.-)(%d+) hours? ago",rep="TLN CHEAT%1%2 giờ trước"},
-    {pat="Venyx(.-)(%d+) minutes? ago",rep="TLN CHEAT%1%2 phút trước"},
-    {pat="Venyx(.-)(%d+) days? ago",rep="TLN CHEAT%1%2 ngày trước"},
-    {pat="^ALL (%d+)$",rep="TẤT CẢ %1"},
-    {pat="^READY (%d+)$",rep="SẴN SÀNG %1"},
-    {pat="^GROWING (%d+)$",rep="ĐANG LỚN %1"},
-    {pat="^IN BAG (%d+)$",rep="TRONG TÚI %1"},
-    {pat="Pen (%d+/%d+) · (%d+) egg%(s%) ready to place",rep="Chuồng %1 · %2 trứng sẵn sàng đặt"},
-    {pat="(%d+) egg%(s%) can be mutated",rep="%1 trứng có thể đột biến"},
-    {pat="(%d+) pet%(s%) match",rep="%1 pet khớp bộ lọc"},
-    {pat="(%d+) egg%(s%) match",rep="%1 trứng khớp bộ lọc"},
-    {pat="(%d+) lab egg%(s%) match",rep="%1 trứng Lab khớp bộ lọc"},
-    {pat="^(%d+) pets$",rep="%1 thú cưng"},
-    {pat="(%d+ / %d+) players · (.+)",rep="%1 người chơi · %2"},
-    {pat="Experimental Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Thí Nghiệm · cần %1 · bảo hiểm %2 · lượt đổi %3 · %4"},
-    {pat="Biohazard Pets · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="Pet Sinh Học · cần %1 · bảo hiểm %2 · lượt đổi %3 · %4"},
-    {pat="Unstable DNA · needs (.-) · pity (%d+/%d+) · rerolls (%d+) · (.+)",rep="DNA Bất Ổn · cần %1 · bảo hiểm %2 · lượt đổi %3 · %4"},
-    {pat="^Mythic · 1 in ([%d%.]+)$",rep="Thần Thoại · 1 trên %1"},
-    {pat="^Cosmic · 1 in ([%d%.]+)$",rep="Vũ Trụ · 1 trên %1"},
-    {pat="^Secret · 1 in ([%d%.]+)$",rep="Bí Ẩn · 1 trên %1"},
-    {pat="^Divine · 1 in ([%d%.]+)$",rep="Thánh Thần · 1 trên %1"},
-    {pat="^Eternal · 1 in ([%d%.]+)$",rep="Vĩnh Cửu · 1 trên %1"},
-}
-
--- ==================== 4. HÀM DỊCH ====================
-local function translateStatusAction(cleanEn)
-    if not cleanEn or cleanEn == "" then
-        if currentLanguage == "ID" then return "Menganggur" end
-        return "Đang rảnh"
-    end
-    if currentLanguage == "EN" then
-        if cleanEn == "Đang rảnh" or cleanEn == "Menganggur" then return "Idle" end
-        return cleanEn
-    end
-    local trimmed = (cleanEn:match("^%s*(.-)%s*$") or cleanEn):gsub("%s+", " ")
-    -- Indonesian branch
-    if currentLanguage == "ID" then
-        if trimmed:lower() == "idle" or trimmed == "Menganggur" then return "Menganggur" end
-        local cacheKey = "STATUS_ID|" .. trimmed
-        if FastCache[cacheKey] then return FastCache[cacheKey] end
-        if EXACT_MATCH_ID[trimmed] then FastCache[cacheKey] = EXACT_MATCH_ID[trimmed]; return EXACT_MATCH_ID[trimmed] end
-        for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
-            if trimmed:find(item.pat) then
-                local out = trimmed:gsub(item.pat, item.rep)
-                FastCache[cacheKey] = out; return out
-            end
-        end
-        local result = trimmed
-        for engPrefix, idPrefix in pairs(FALLBACK_VERB_PREFIX_ID) do
-            if result:sub(1, #engPrefix):lower() == engPrefix:lower() then
-                result = idPrefix .. result:sub(#engPrefix + 1); break
-            end
-        end
-        FastCache[cacheKey] = result; return result
-    end
-    -- Vietnamese branch
-    if trimmed:lower() == "idle" or trimmed == "Đang rảnh" then return "Đang rảnh" end
-    local cacheKey = "STATUS_VI|" .. trimmed
-    if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if EXACT_MATCH_VI[trimmed] then FastCache[cacheKey] = EXACT_MATCH_VI[trimmed]; return EXACT_MATCH_VI[trimmed] end
-    for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
-        if trimmed:find(item.pat) then
-            local out = trimmed:gsub(item.pat, item.rep)
-            FastCache[cacheKey] = out; return out
-        end
-    end
-    local result = trimmed
-    for engPrefix, viPrefix in pairs(FALLBACK_VERB_PREFIX_VI) do
-        if result:sub(1, #engPrefix):lower() == engPrefix:lower() then
-            result = viPrefix .. result:sub(#engPrefix + 1); break
-        end
-    end
-    result = result:gsub(" home$", " về nhà"):gsub(" to safe zone$", " về vùng an toàn"):gsub(" to base$", " về căn cứ")
-    FastCache[cacheKey] = result; return result
-end
-
-local function translateTLNText(raw)
-    if not raw or raw == "" then return raw end
-    local cacheKey = currentLanguage .. "|" .. raw
-    if FastCache[cacheKey] then return FastCache[cacheKey] end
-    if raw:find("Venyx SAE") then raw = raw:gsub("Venyx SAE", "TLN SAE")
-    elseif raw == "VENYX" then raw = NEW_TITLE end
-    if currentLanguage == "EN" then FastCache[cacheKey] = raw; return raw end
-    local normalized = (raw:match("^%s*(.-)%s*$") or raw):gsub("%s+", " ")
-    -- Indonesian branch
-    if currentLanguage == "ID" then
-        if EXACT_MATCH_ID[normalized] then
-            local out = EXACT_MATCH_ID[normalized]; FastCache[cacheKey] = out; return out
-        end
-        local result = normalized
-        for _, item in ipairs(DYNAMIC_PATTERNS_ID) do
-            if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
-            end
-        end
-        for _, item in ipairs(STATUS_ACTION_PATTERNS_ID) do
-            if result:find(item.pat) then
-                result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
-            end
-        end
-        FastCache[cacheKey] = raw; return raw
-    end
-    -- Vietnamese branch
-    if EXACT_MATCH_VI[normalized] then
-        local out = EXACT_MATCH_VI[normalized]; FastCache[cacheKey] = out; return out
-    end
-    -- Prefix symbol detection (e.g. "🔥 Auto steal")
-    local prefix, wordPart = normalized:match("^([^%w%s]+%s*)(.+)$")
-    if prefix and wordPart and EXACT_MATCH_VI[wordPart] then
-        local out = prefix .. EXACT_MATCH_VI[wordPart]; FastCache[cacheKey] = out; return out
-    end
-    local result = normalized
-    for _, item in ipairs(DYNAMIC_PATTERNS_VI) do
-        if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
-        end
-    end
-    for _, item in ipairs(STATUS_ACTION_PATTERNS_VI) do
-        if result:find(item.pat) then
-            result = result:gsub(item.pat, item.rep); FastCache[cacheKey] = result; return result
-        end
-    end
-    FastCache[cacheKey] = raw; return raw
-end
-
-local function applyElementTranslation(inst)
-    if not (inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox")) then return end
-    if inst:GetAttribute("__IslandDone") or inst:GetAttribute("__FpsHooked") or inst:GetAttribute("__HiddenVxLogo") or inst.Name == "IslandExpandHint" or inst:FindFirstAncestor("ChilliV5_ExpandedIsland") then return end
-    if inst:GetAttribute("__IsTranslating") then return end
-    if inst:IsA("TextBox") then
-        local origPh = inst:GetAttribute("OrigPlaceholder")
-        if not origPh and inst.PlaceholderText ~= "" then origPh = inst.PlaceholderText; inst:SetAttribute("OrigPlaceholder", origPh) end
-        if origPh then inst.PlaceholderText = translateTLNText(origPh) end
+    if not Cfg.AimOn or not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        Target = nil
         return
     end
-    local rawText = inst.Text
-    if isFpsCounterText(rawText) then hookFakeFpsCounter(inst); return end
-    local original = inst:GetAttribute("OrigRawText")
-    if not original then original = rawText; inst:SetAttribute("OrigRawText", original) end
-    local mapped = translateTLNText(original)
-    if inst.Text ~= mapped then
-        inst:SetAttribute("__IsTranslating", true)
-        inst:SetAttribute("__LastTranslated", mapped)
-        pcall(function() inst.Text = mapped end)
-        task.defer(function() inst:SetAttribute("__IsTranslating", false) end)
-    end
-end
 
-local function hookTextForTranslation(inst)
-    if not (inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox")) then return end
-    if inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") or inst.Name == "IslandExpandHint" or inst:FindFirstAncestor("ChilliV5_ExpandedIsland") then return end
-    if not inst:IsA("TextBox") and isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst); return end
-    applyElementTranslation(inst)
-    if inst:GetAttribute("__TransHooked") then return end
-    inst:SetAttribute("__TransHooked", true)
-    table.insert(TrackedTexts, inst)
-    inst:GetPropertyChangedSignal("Text"):Connect(function()
-        if inst:GetAttribute("__IsTranslating") or inst:GetAttribute("__IslandDone") or inst:GetAttribute("__HiddenVxLogo") then return end
-        if isFpsCounterText(inst.Text) then hookFakeFpsCounter(inst); return end
-        if inst.Text ~= inst:GetAttribute("__LastTranslated") then
-            inst:SetAttribute("OrigRawText", inst.Text); applyElementTranslation(inst)
+    Target = GetTarget()
+    if not Target then return end
+    local char = Target.Character
+    if not char then return end
+    local ap = GetAimPart(char)
+    if not ap then return end
+    local sp, on = ToScreen(ap.Position)
+    if not on then return end
+    MoveAim(sp.X, sp.Y)
+end)
+
+-- ESP loop
+RunService.RenderStepped:Connect(function()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LP then continue end
+        if not Cache[p] then continue end
+        local esp = Cache[p]
+        local char = p.Character
+
+        if not Cfg.ESPOn or not char or not IsAlive(p) or GetDist(p) > Cfg.MaxDist then
+            HideAll(esp)
+            continue
         end
-    end)
-end
 
-local function refreshAllTranslations()
-    for i = #TrackedTexts, 1, -1 do
-        local el = TrackedTexts[i]
-        if el and el.Parent then applyElementTranslation(el)
-        else table.remove(TrackedTexts, i) end
-    end
-    if GlobalRefreshIslandStatus then GlobalRefreshIslandStatus() end
-end
+        local x, y, w, h = BoxBounds(char)
+        if not x then HideAll(esp) continue end
 
--- ==================== 5. NÚT NGÔN NGỮ – NATIVE NAVBAR STYLE ====================
-local function setupDynamicIslandFromStatus(statusLbl, tlnGui)
-    local pill = statusLbl.Parent
-    if not (pill and pill:IsA("GuiObject")) then return end
-    if statusLbl:GetAttribute("__IslandDone") then return end
-    statusLbl:SetAttribute("__IslandDone", true)
-    GlobalRefreshIslandStatus = function() end
+        local col = (Target == p) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
 
-    -- Ẩn statusLbl gốc (Idle/Nhân Rồi/Menganggur)
-    statusLbl.Text = ""
-    statusLbl.TextTransparency = 1
-    statusLbl.Size = UDim2.new(0, 0, 0, 0)
-    statusLbl.AutomaticSize = Enum.AutomaticSize.None
-    statusLbl.Active = false
-    statusLbl:GetPropertyChangedSignal("Text"):Connect(function()
-        if statusLbl.Text ~= "" and not statusLbl:GetAttribute("__Updating") then
-            statusLbl:SetAttribute("__Updating", true)
-            statusLbl.Text = ""
-            task.defer(function() statusLbl:SetAttribute("__Updating", false) end)
-        end
-    end)
-
-    -- Dọn rác trong pill cũ
-    for _, child in ipairs(pill:GetChildren()) do
-        if child:IsA("UIGradient") then child:Destroy() end
-    end
-    for _, n in ipairs({"IslandClickHitbox","IslandExpandHint"}) do
-        local c = pill:FindFirstChild(n); if c then c:Destroy() end
-    end
-    local oldExp = tlnGui:FindFirstChild("ChilliV5_ExpandedIsland")
-    if oldExp then oldExp:Destroy() end
-    -- Xóa các nút VI/EN/ID cũ và slider
-    for _, child in ipairs(pill:GetChildren()) do
-        if child:IsA("TextButton") or child:IsA("Frame") or child:IsA("UIStroke")
-        or child:IsA("UICorner") or child:IsA("UIPadding") then
-            child:Destroy()
-        end
-    end
-
-    -- ── Language names cho từng chế độ ──────────────────────────────────────
-    local LANG_NAMES = {
-        VI = "Ngôn ngữ: Tiếng Việt",
-        EN = "Language: English",
-        ID = "Bahasa: Indonesia",
-    }
-    local LANG_ICONS = { VI = "🇻🇳", EN = "🌐", ID = "🇮🇩" }
-    local CYCLE = { VI = "EN", EN = "ID", ID = "VI" }
-
-    -- ── Restyle pill → 1 nút nhỏ gọn trong navbar hub ────────────────────────
-    -- GIỮ NGUYÊN PARENT (không reparent sang tlnGui)
-    -- → nút nằm ngay trong thanh navbar của hub, giống các nút khác
-    pill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    pill.BackgroundTransparency = 0.88
-    pill.AutomaticSize = Enum.AutomaticSize.XY
-    pill.Size = UDim2.new(0, 0, 0, 0)   -- auto từ content
-    pill.Active = true
-    pill.ClipsDescendants = false
-
-    local pillCorner = Instance.new("UICorner")
-    pillCorner.CornerRadius = UDim.new(0, 5)
-    pillCorner.Parent = pill
-
-    local pillPad = Instance.new("UIPadding")
-    pillPad.PaddingLeft   = UDim.new(0, 8)
-    pillPad.PaddingRight  = UDim.new(0, 8)
-    pillPad.PaddingTop    = UDim.new(0, 3)
-    pillPad.PaddingBottom = UDim.new(0, 3)
-    pillPad.Parent = pill
-
-    -- Rainbow stroke (giống các nút đặc trưng TLN)
-    local pillStroke = Instance.new("UIStroke")
-    pillStroke.Name           = "LangStroke"
-    pillStroke.Thickness      = 1
-    pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    pillStroke.Color          = Color3.fromRGB(255, 255, 255)
-    pillStroke.Parent         = pill
-    local sg = Instance.new("UIGradient")
-    sg.Color  = COLOR_SEQ_RAINBOW
-    sg.Parent = pillStroke
-    table.insert(ActiveGradients, sg)
-
-    -- Nút ngôn ngữ chính
-    local langBtn = Instance.new("TextButton")
-    langBtn.Name               = "TLNLangBtn"
-    langBtn.BackgroundTransparency = 1
-    langBtn.Size               = UDim2.new(0, 0, 0, 0)
-    langBtn.AutomaticSize      = Enum.AutomaticSize.XY
-    langBtn.Text               = LANG_ICONS[currentLanguage].." "..LANG_NAMES[currentLanguage]
-    langBtn.Font               = Enum.Font.GothamMedium
-    langBtn.TextSize           = 11
-    langBtn.TextColor3         = Color3.fromRGB(255, 255, 255)
-    langBtn.TextXAlignment     = Enum.TextXAlignment.Center
-    langBtn.ZIndex             = pill.ZIndex + 1
-    langBtn.AutoButtonColor    = true
-    langBtn.Parent             = pill
-
-    -- Hover effect
-    langBtn.MouseEnter:Connect(function()
-        TweenService:Create(pill, TweenInfo.new(0.12), {
-            BackgroundTransparency = 0.72
-        }):Play()
-    end)
-    langBtn.MouseLeave:Connect(function()
-        TweenService:Create(pill, TweenInfo.new(0.12), {
-            BackgroundTransparency = 0.88
-        }):Play()
-    end)
-
-    -- ── setLanguage ──────────────────────────────────────────────────────────
-    local function setLanguage(lang)
-        if currentLanguage == lang then return end
-        currentLanguage = lang
-        langBtn.Text = LANG_ICONS[lang].." "..LANG_NAMES[lang]
-        -- Tween nhỏ trên nút để báo đã đổi
-        TweenService:Create(pill, TweenInfo.new(0.08), {
-            BackgroundTransparency = 0.55
-        }):Play()
-        task.delay(0.2, function()
-            TweenService:Create(pill, TweenInfo.new(0.2), {
-                BackgroundTransparency = 0.88
-            }):Play()
+        pcall(function()
+            esp.BoxOut.Position = Vector2.new(x-1, y-1)
+            esp.BoxOut.Size = Vector2.new(w+2, h+2)
+            esp.BoxOut.Visible = true
+            esp.Box.Color = col
+            esp.Box.Position = Vector2.new(x, y)
+            esp.Box.Size = Vector2.new(w, h)
+            esp.Box.Visible = true
         end)
-        refreshAllTranslations()
-    end
 
-    -- Click → cycle VI → EN → ID → VI
-    langBtn.MouseButton1Click:Connect(function()
-        setLanguage(CYCLE[currentLanguage] or "VI")
-    end)
-end
-
--- ==================== 6. LOGO TRÒN ====================
-local function setupUnclippedCircularLogo(targetObj)
-    local topPanel = targetObj
-    while topPanel.Parent and topPanel.Parent:IsA("GuiObject") and not topPanel.Parent:IsA("ScreenGui") do
-        topPanel = topPanel.Parent
-    end
-    if topPanel:GetAttribute("__FloatingLogoV5Perfect") then return end
-    local sz = topPanel.AbsoluteSize; local pos = topPanel.AbsolutePosition
-    if sz.X > 105 or sz.Y > 105 or sz.X < 28 or math.abs(sz.X - sz.Y) > 25 or pos.X > 350 then return end
-    topPanel:SetAttribute("__FloatingLogoV5Perfect", true)
-    local container = topPanel
-    for _, child in ipairs(container:GetDescendants()) do
-        if child:IsA("UIPadding") or child:IsA("UIAspectRatioConstraint") or child:IsA("UISizeConstraint") then
-            if child.Name ~= "PerfectCircleAspect" then pcall(function() child:Destroy() end) end
-        end
-        if (child:IsA("ImageLabel") or child:IsA("ImageButton")) and child.Name ~= "ChilliV5CoverLogo" then
-            child.ImageTransparency = 1; child.BackgroundTransparency = 1
-        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
-            child:SetAttribute("__HiddenVxLogo", true); child.TextTransparency = 1; child.BackgroundTransparency = 1
-        end
-    end
-    if container:IsA("ImageLabel") or container:IsA("ImageButton") then container.ImageTransparency = 1
-    elseif container:IsA("TextLabel") or container:IsA("TextButton") then
-        container:SetAttribute("__HiddenVxLogo", true); container.TextTransparency = 1
-    end
-    container.Size = UDim2.new(0, 60, 0, 60)
-    container.BackgroundColor3 = LOGO_BG_COLOR
-    container.BackgroundTransparency = 0; container.BorderSizePixel = 0; container.ClipsDescendants = true
-    local aspect = container:FindFirstChild("PerfectCircleAspect") or Instance.new("UIAspectRatioConstraint")
-    aspect.Name = "PerfectCircleAspect"; aspect.AspectRatio = 1; aspect.Parent = container
-    local cCorner = container:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
-    cCorner.CornerRadius = UDim.new(1, 0); cCorner.Parent = container
-    if not container:GetAttribute("__SizeLocked") then
-        container:SetAttribute("__SizeLocked", true)
-        container:GetPropertyChangedSignal("Size"):Connect(function()
-            if container.Size ~= UDim2.new(0, 60, 0, 60) then container.Size = UDim2.new(0, 60, 0, 60) end
+        pcall(function()
+            local cur, max = GetHP(p)
+            local pct = math.clamp(cur / math.max(max, 1), 0, 1)
+            local bW, bX = 4, x - 7
+            local fH = math.max(1, math.floor(h * pct))
+            esp.HPBG.Position = Vector2.new(bX, y)
+            esp.HPBG.Size = Vector2.new(bW, h)
+            esp.HPBG.Visible = true
+            esp.HPFill.Position = Vector2.new(bX, y + (h - fH))
+            esp.HPFill.Size = Vector2.new(bW, fH)
+            esp.HPFill.Color = HPColor(pct)
+            esp.HPFill.Visible = true
+            esp.HPTxt.Text = math.floor(cur) .. "hp"
+            esp.HPTxt.Position = Vector2.new(bX + bW/2, y - 14)
+            esp.HPTxt.Visible = true
         end)
-    end
-    local stroke = container:FindFirstChild("RainbowBorder") or Instance.new("UIStroke")
-    stroke.Name = "RainbowBorder"; stroke.Thickness = 2.5
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Color = Color3.fromRGB(255, 255, 255); stroke.Parent = container
-    local strokeGrad = stroke:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-    strokeGrad.Color = COLOR_SEQ_RAINBOW; strokeGrad.Parent = stroke
-    table.insert(ActiveGradients, strokeGrad)
-    local coverLogo = container:FindFirstChild("ChilliV5CoverLogo") or Instance.new("ImageLabel")
-    coverLogo.Name = "ChilliV5CoverLogo"; coverLogo.Size = UDim2.new(1, 0, 1, 0)
-    coverLogo.Position = UDim2.new(0.5, 0, 0.5, 0); coverLogo.AnchorPoint = Vector2.new(0.5, 0.5)
-    coverLogo.BackgroundTransparency = 1; coverLogo.Image = CHILLI_LOGO_ID
-    coverLogo.ImageTransparency = 0; coverLogo.ScaleType = Enum.ScaleType.Fit
-    coverLogo.Active = false; coverLogo.ZIndex = container.ZIndex + 5; coverLogo.Parent = container
-    local logoCorner = coverLogo:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
-    logoCorner.CornerRadius = UDim.new(1, 0); logoCorner.Parent = coverLogo
-end
 
-local function patchHeaderLogoLeftOfTitle(headerContainer, titleLbl)
-    if not headerContainer or not titleLbl then return end
-    local headerY = titleLbl.AbsolutePosition.Y; local titleX = titleLbl.AbsolutePosition.X
-    for _, item in ipairs(headerContainer:GetDescendants()) do
-        if item ~= titleLbl and item:IsA("GuiObject") and item.Name ~= "ChilliHeaderLogo" then
-            local pos = item.AbsolutePosition; local sz = item.AbsoluteSize
-            if math.abs(pos.Y - headerY) < 35 and pos.X < titleX and sz.X >= 10 and sz.X <= 45 then
-                if item:IsA("ImageLabel") or item:IsA("ImageButton") then
-                    item.Image = CHILLI_LOGO_ID; item.ImageTransparency = 0
-                    item.BackgroundTransparency = 1; item.ScaleType = Enum.ScaleType.Fit
-                elseif item:IsA("TextLabel") or item:IsA("TextButton") then
-                    item:SetAttribute("__HiddenVxLogo", true); item.TextTransparency = 1
-                    local holder = item.Parent
-                    if holder and not holder:FindFirstChild("ChilliHeaderLogo") then
-                        local hLogo = Instance.new("ImageLabel")
-                        hLogo.Name = "ChilliHeaderLogo"; hLogo.Size = UDim2.new(0, 24, 0, 24)
-                        hLogo.Position = UDim2.new(0.5, 0, 0.5, 0); hLogo.AnchorPoint = Vector2.new(0.5, 0.5)
-                        hLogo.BackgroundTransparency = 1; hLogo.Image = CHILLI_LOGO_ID
-                        hLogo.ScaleType = Enum.ScaleType.Fit; hLogo.ZIndex = item.ZIndex + 2; hLogo.Parent = holder
-                    end
-                end
-            end
-        end
-    end
-end
-
--- ==================== 7. MAIN SCAN ====================
-local function tryPatchTLN()
-    for _, root in ipairs(roots) do
-        if root then
-            for _, gui in ipairs(root:GetChildren()) do
-                if gui:IsA("ScreenGui") and gui.Name ~= "RobloxGui" and gui.Name ~= "TopBarApp" then
-                    -- Skip full rescan nếu GUI đã được patch hoàn chỉnh (giảm giật)
-                    local nonHubDone = gui:GetAttribute("__TLNNonHubScanned")
-                    local hubDone    = gui:GetAttribute("__IslandLocked")
-                    local chilliDone = gui:GetAttribute("__ChilliFinderPatched")  -- [LAGFIX] bỏ qua chilli finder sau khi patch xong
-                    local skipScan   = gui:GetAttribute("__TextListenerAttached") and (nonHubDone or hubDone or chilliDone)
-                    if not skipScan then
-                    -- Gộp 2 pass thành 1 để tránh GetDescendants() 2 lần
-                    local titleLbl = nil
-                    local allDesc = gui:GetDescendants()
-                    for _, d in ipairs(allDesc) do
-                        if d:IsA("TextLabel") or d:IsA("TextButton") then
-                            if isFpsCounterText(d.Text) then
-                                hookFakeFpsCounter(d)
-                            end
-                            if not titleLbl and not d:FindFirstAncestorOfClass("ScrollingFrame") then
-                                local t = d.Text
-                                if t == "VENYX" or t == NEW_TITLE then titleLbl = d end
-                            end
-                        end
-                    end
-                    -- Hook DescendantAdded cho MỌI ScreenGui (bao gồm Steal Panel, Chilli Finder)
-                    if not gui:GetAttribute("__TextListenerAttached") then
-                        gui:SetAttribute("__TextListenerAttached", true)
-                        gui.DescendantAdded:Connect(function(newDesc)
-                            if newDesc:IsA("TextLabel") or newDesc:IsA("TextButton") or newDesc:IsA("TextBox") then
-                                if gui:GetAttribute("__ChilliFinderPatched") then
-                                    -- [FIX] delay 0.3s: cho VenyxHub set text xong trước khi dịch
-                                    -- task.defer quá nhanh → VenyxHub ghi đè ngay sau
-                                    task.delay(0.3, function()
-                                        if newDesc and newDesc.Parent then pcall(applyElementTranslation, newDesc) end
-                                    end)
-                                else
-                                    -- delay 0.05s: chờ game set xong text rồi mới dịch
-                                    task.delay(0.05, function()
-                                        if newDesc and newDesc.Parent then
-                                            pcall(hookTextForTranslation, newDesc)
-                                        end
-                                    end)
-                                end
-                            end
-                        end)
-                    end
-
-                    if titleLbl then
-                        if titleLbl.Text ~= NEW_TITLE then
-                            titleLbl.Text = NEW_TITLE; titleLbl.AutomaticSize = Enum.AutomaticSize.X
-                        end
-                        -- Fast-retry: nếu pill chưa tạo (AbsolutePosition chưa ready), scan nhanh lại
-                        if not gui:GetAttribute("__IslandLocked") and not gui:GetAttribute("__IslandFastRetry") then
-                            gui:SetAttribute("__IslandFastRetry", true)
-                            task.spawn(function()
-                                for _, t in ipairs({0.15, 0.35, 0.65, 1.2}) do
-                                    task.wait(t)
-                                    if gui:GetAttribute("__IslandLocked") then break end
-                                    pcall(tryPatchTLN)
-                                end
-                                gui:SetAttribute("__IslandFastRetry", false)
-                            end)
-                        end
-                        local mainWindow = nil; local curr = titleLbl
-                        while curr.Parent and curr.Parent ~= gui do
-                            curr = curr.Parent
-                            if curr:IsA("GuiObject") and curr.AbsoluteSize.X >= 350 and curr.AbsoluteSize.Y >= 220 then
-                                mainWindow = curr
-                            end
-                        end
-                        local headerY = titleLbl.AbsolutePosition.Y
-                        if mainWindow then patchHeaderLogoLeftOfTitle(mainWindow, titleLbl) end
-                        for _, topChild in ipairs(gui:GetChildren()) do
-                            if topChild:IsA("GuiObject") and topChild ~= mainWindow
-                            and topChild.Name ~= "ChilliV5_ExpandedIsland"
-                            and not topChild:FindFirstChild("IslandExpandHint") then
-                                setupUnclippedCircularLogo(topChild)
-                            end
-                        end
-                        for _, desc in ipairs(allDesc) do
-                            if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("TextBox") then
-                                local txt = desc.Text or ""; local origTxt = desc:GetAttribute("OrigRawText") or ""
-                                local isAlreadyMovedIdle = desc:GetAttribute("__IslandDone")
-                                -- [FIX] Bỏ isStatusKeyword: nhận diện bằng vị trí thay vì nội dung text
-                                -- Chilli Finder status label có thể hiện bất kỳ trạng thái nào (Hopping, Rejoining,...)
-                                local isHeaderIdle = (not gui:GetAttribute("__IslandLocked"))
-                                    and (not desc:FindFirstAncestorOfClass("ScrollingFrame"))
-                                    and desc.Parent
-                                    and (not titleLbl:IsDescendantOf(desc.Parent))
-                                    and math.abs(desc.AbsolutePosition.Y - headerY) < 35
-                                    and desc.AbsolutePosition.X > titleLbl.AbsolutePosition.X + 60
-                                if isHeaderIdle or isAlreadyMovedIdle then
-                                    gui:SetAttribute("__IslandLocked", true)
-                                    setupDynamicIslandFromStatus(desc, gui)
-                                else
-                                    hookTextForTranslation(desc)
-                                end
-                            elseif (desc:IsA("ImageLabel") or desc:IsA("ImageButton"))
-                            and desc.Name ~= "ChilliV5CoverLogo" and desc.Name ~= "ChilliHeaderLogo"
-                            and desc.Name ~= "InnerChilliLogo" then
-                                if not desc:FindFirstAncestorOfClass("ScrollingFrame") then
-                                    if mainWindow and not desc:IsDescendantOf(mainWindow) then
-                                        setupUnclippedCircularLogo(desc)
-                                    end
-                                end
-                            end
-                        end
-                    else
-                        -- Nhận dạng Chilli Finder
-                        local isHighFreqGui = false
-                        for _, d in ipairs(allDesc) do
-                            if d:IsA("TextLabel") or d:IsA("TextButton") then
-                                local t = d.Text or ""
-                                if t == "Chilli Finder" or t == "Cari Server"
-                                or t == "Tìm Máy Chủ" or t == "Tìm Server" then
-                                    isHighFreqGui = true; break
-                                end
-                            end
-                        end
-                        if isHighFreqGui then
-                            gui:SetAttribute("__ChilliFinderPatched", true)
-                        end
-                        -- [FIX] Dùng hookTextForTranslation cho MỌI element (kể cả Chilli Finder)
-                        -- để Text:Changed hook được gắn → VenyxHub không ghi đè được bản dịch
-                        -- Chỉ skip rows trong ScrollingFrame (dynamic, update liên tục) → dùng apply
-                        for _, d in ipairs(allDesc) do
-                            if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-                                if isHighFreqGui and d:FindFirstAncestorOfClass("ScrollingFrame") then
-                                    -- Row động: chỉ apply 1 lần, DescendantAdded+delay lo phần còn lại
-                                    task.defer(function()
-                                        if d and d.Parent then pcall(applyElementTranslation, d) end
-                                    end)
-                                else
-                                    -- Header/nút tĩnh: hook đầy đủ để bền vững
-                                    hookTextForTranslation(d)
-                                end
-                            end
-                        end
-                        -- Đánh dấu đã scan xong: lần sau bỏ qua, DescendantAdded lo tiếp
-                        gui:SetAttribute("__TLNNonHubScanned", true)
-                    end
-                    end -- end if not skipScan
-                end
-            end
-        end
-    end
-end
-
--- tryPatchTLN chạy NGAY - không cần chờ hub API
-pcall(tryPatchTLN)
-
--- Root watcher: bắt GUI mới thêm vào bất cứ lúc nào (debounce để không scan 2 lần)
-task.spawn(function()
-    for _, root in ipairs(roots) do
-        if root then
-            local _scanPending = false
-            root.ChildAdded:Connect(function()
-                if _scanPending then return end
-                _scanPending = true
-                -- [PERF] 2 lần scan → 1 lần sau 0.5s (đủ cho layout render xong)
-                task.wait(0.5); pcall(tryPatchTLN)
-                _scanPending = false
-            end)
-        end
+        pcall(function()
+            esp.Name.Text = p.Name
+            esp.Name.Position = Vector2.new(x + w/2, y - 15)
+            esp.Name.Visible = true
+            esp.Dist.Text = "[" .. math.floor(GetDist(p)) .. "m]"
+            esp.Dist.Position = Vector2.new(x + w/2, y + h + 2)
+            esp.Dist.Visible = true
+        end)
     end
 end)
 
--- Rapid scan 30s rồi keepalive mãi (giảm tần suất để bớt giật)
-task.spawn(function()
-    pcall(function() task.desync() end)  -- [FIX] pcall: không phải executor nào cũng có task.desync()
-    -- [PERF] 30 lần × 1s → 15 lần × 2s: cùng bao phủ 30s, giảm 50% GetDescendants() calls
-    for _ = 1, 15 do
-        task.wait(2); pcall(tryPatchTLN)
-    end
-    local cleanupTick = 0
-    while true do
-        task.wait(5); pcall(tryPatchTLN)
-        -- Dọn TrackedTexts mỗi 30s để tránh phình bộ nhớ gây đơ
-        cleanupTick = cleanupTick + 5
-        if cleanupTick >= 30 then
-            cleanupTick = 0
-            -- [PERF] swap-remove O(1)
-            local n = #TrackedTexts
-            local i = 1
-            while i <= n do
-                if TrackedTexts[i] and TrackedTexts[i].Parent then
-                    i = i + 1
-                else
-                    TrackedTexts[i] = TrackedTexts[n]
-                    TrackedTexts[n] = nil
-                    n = n - 1
-                end
-            end
-        end
-    end
-end)
-
--- ==================== THÊM CHỨC NĂNG TẠI ĐÂY ====================
--- Dùng onHubReady để đảm bảo hub đã load xong trước khi thêm
--- Ví dụ:
--- onHubReady(function(Hub)
---     if not Hub then return end
---     local tab = Hub:MakeTab({ Name = "Custom" })
---     local sec = tab:AddSection({ Name = "My Features" })
---     sec:AddToggle({
---         Name    = "Tên chức năng",
---         Default = false,
---         Callback = function(v)
---             -- code ở đây
---         end
---     })
--- end)
-
--- ==================== 8. TELEGRAM + WHAT'S NEW + CHILLI HUB PATCH ====================
-task.spawn(function()
-    if setclipboard then
-        local origClipboard = setclipboard
-        setclipboard = function(text)
-            if type(text) == "string" and text:find("discord%.gg") then
-                origClipboard(TELEGRAM_LINK)
-            else
-                origClipboard(text)
-            end
-        end
-    end
-
-    local patched = {}
-
-    local function patchGui(gui)
-        if not gui:IsA("ScreenGui") then return end
-        -- [BUG FIX] Guard: không hook DescendantAdded nhiều lần cho cùng 1 GUI
-        -- Thiếu guard này → 60 lần lặp × mỗi lần add 1 connection = 60 connections leak
-        if gui:GetAttribute("__S8Hooked") then return end
-        gui:SetAttribute("__S8Hooked", true)
-        local function scanDesc(desc)
-            -- Ẩn WHAT'S NEW panels
-            if desc:IsA("Frame") or desc:IsA("ScrollingFrame") then
-                local name = desc.Name:lower()
-                if name:find("whatsnew") or name:find("whats_new") or name:find("changelog") or name:find("news") then
-                    desc.Visible = false; return
-                end
-                for _, child in ipairs(desc:GetChildren()) do
-                    if (child:IsA("TextLabel") or child:IsA("TextButton")) then
-                        local t = child.Text or ""
-                        if t == "WHAT'S NEW" or t == "CÓ GÌ MỚI" or t == "APA YANG BARU" then
-                            desc.Visible = false; break
-                        end
-                    end
-                end
-            end
-            -- "Chilli Hub" → "TLN CHEAT"
-            if (desc:IsA("TextButton") or desc:IsA("TextLabel")) and not patched[desc] then
-                local t = desc.Text or ""
-                if t == "Chilli Hub" or t == "Chilli hub" or t == "CHILLI HUB" then
-                    patched[desc] = true
-                    desc.Text = "TLN CHEAT"
-                    desc:GetPropertyChangedSignal("Text"):Connect(function()
-                        if desc.Text ~= "TLN CHEAT" then desc.Text = "TLN CHEAT" end
-                    end)
-                end
-            end
-            -- Copy Invite → Telegram
-            if desc:IsA("TextButton") and not patched[desc] then
-                local t = (desc.Text or ""):lower()
-                if t:find("copy invite") or t:find("chép link") then
-                    patched[desc] = true
-                    desc.MouseButton1Click:Connect(function()
-                        pcall(function() if setclipboard then setclipboard(TELEGRAM_LINK) end end)
-                    end)
-                end
-            end
-        end
-        for _, desc in ipairs(gui:GetDescendants()) do pcall(scanDesc, desc) end
-        gui.DescendantAdded:Connect(function(newDesc)
-            task.defer(function() pcall(scanDesc, newDesc) end)
-        end)
-    end
-
-    for i = 1, 60 do
+-- Player events
+local function Setup(p)
+    MakeESP(p)
+    p.CharacterAdded:Connect(function()
         task.wait(0.5)
-        for _, root in ipairs(roots) do
-            if root then
-                for _, gui in ipairs(root:GetChildren()) do
-                    pcall(patchGui, gui)
-                end
-            end
-        end
-    end
-    -- [BUG FIX] Sau 30s loop kết thúc, thêm ChildAdded watcher vĩnh cửu
-    -- Không có cái này → GUI mới xuất hiện sau 30s sẽ không bao giờ được patch
-    for _, root in ipairs(roots) do
-        if root then
-            root.ChildAdded:Connect(function(newGui)
-                task.wait(0.3)
-                pcall(patchGui, newGui)
-            end)
-        end
-    end
-end)
+        RemoveESP(p)
+        MakeESP(p)
+    end)
+end
 
+Players.PlayerAdded:Connect(Setup)
+Players.PlayerRemoving:Connect(RemoveESP)
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LP then Setup(p) end
+end
 
--- ==================== 9. CHILLI FINDER: BYPASS + LAG FIX ====================
-task.spawn(function()
-
-    -- ── A. HTTP HOOK đã chạy đồng bộ ở đầu file (section 0) ──────────────────
-    -- [FIX] Không re-hook ở đây nữa để tránh double-wrap và race condition
-    -- spoofJsonEarly đã patch HttpGet + RequestAsync trước khi VenyxHub load
-
-    -- ── B. FIND JOB ID trong frame hierarchy khi nút Join được click ──────────
-    local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
-    local ATTR_KEYS = {
-        "JobId","jobId","job_id","ServerId","serverId","server_id",
-        "PlaceJobId","instanceId","InstanceId","ServerJobId","serverJobId",
-    }
-
-    -- Cache GUI → descendant list để không GetDescendants() lặp lại
-    local _guiDescCache = {}
-
-    local function findJobId(btn)
-        -- 1) Walk parent chain trước (nhanh nhất)
-        local obj = btn
-        for _ = 1, 8 do
-            if not obj or obj:IsA("ScreenGui") then break end
-            -- check known attribute keys
-            for _, k in ipairs(ATTR_KEYS) do
-                local v = obj:GetAttribute(k)
-                if type(v) == "string" and v:match(UUID_PAT) then return v end
-            end
-            -- scan ALL attributes
-            local ok2, allAttrs = pcall(function() return obj:GetAttributes() end)
-            if ok2 and type(allAttrs) == "table" then
-                for _, v in pairs(allAttrs) do
-                    if type(v) == "string" and v:match(UUID_PAT) then return v end
-                end
-            end
-            -- Name của frame
-            if type(obj.Name) == "string" and obj.Name:match(UUID_PAT) then return obj.Name end
-            -- StringValue / TextLabel / TextButton trực tiếp trong obj
-            for _, child in ipairs(obj:GetChildren()) do
-                if child:IsA("StringValue") then
-                    if (child.Value or ""):match(UUID_PAT) then return child.Value end
-                elseif child:IsA("TextLabel") or child:IsA("TextButton") then
-                    local v = child.Text or ""
-                    if v:match(UUID_PAT) then return v end
-                end
-                for _, gc in ipairs(child:GetChildren()) do
-                    if gc:IsA("StringValue") and (gc.Value or ""):match(UUID_PAT) then return gc.Value end
-                end
-            end
-            obj = obj.Parent
-        end
-
-        -- 2) [FIX] Fallback: scan TOÀN BỘ Chilli Finder GUI
-        -- JobId có thể lưu ở bất cứ đâu trong cây (ModuleScript output, hidden frame, ...)
-        local guiRoot = btn
-        while guiRoot.Parent and not guiRoot.Parent:IsA("ScreenGui") do
-            guiRoot = guiRoot.Parent
-        end
-        if guiRoot:IsA("ScreenGui") then guiRoot = btn end
-        -- dùng ScreenGui làm root
-        local screenRoot = guiRoot
-        while screenRoot and not screenRoot:IsA("ScreenGui") do
-            screenRoot = screenRoot.Parent
-        end
-        if screenRoot and screenRoot:IsA("ScreenGui") then
-            if not _guiDescCache[screenRoot] or tick() - (_guiDescCache[screenRoot]._t or 0) > 3 then
-                _guiDescCache[screenRoot] = {list=screenRoot:GetDescendants(), _t=tick()}
-            end
-            for _, d in ipairs(_guiDescCache[screenRoot].list) do
-                if d and d.Parent then
-                    -- check attributes
-                    local ok3, attrs = pcall(function() return d:GetAttributes() end)
-                    if ok3 then
-                        for _, v in pairs(attrs) do
-                            if type(v) == "string" and v:match(UUID_PAT) then return v end
-                        end
-                    end
-                    -- check Name
-                    if type(d.Name) == "string" and d.Name:match(UUID_PAT) then return d.Name end
-                    -- check StringValue
-                    if d:IsA("StringValue") and (d.Value or ""):match(UUID_PAT) then return d.Value end
-                    -- check hidden text
-                    if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d.Visible then
-                        if (d.Text or ""):match(UUID_PAT) then return d.Text end
-                    end
-                end
-            end
-        end
-        return nil
-    end
-
-    -- ── C. PATCH GUI ELEMENTS ─────────────────────────────────────────────────
-    local TeleportService = game:GetService("TeleportService")
-    local patchedGuis     = {}
-
-    local function isChilliFinderGui(gui)
-        local name = gui.Name:lower()
-        if name:find("chilli") or name:find("finder") then return true end
-        local n = 0
-        for _, d in ipairs(gui:GetDescendants()) do
-            if d:IsA("TextLabel") or d:IsA("TextButton") then
-                local t = d.Text or ""
-                -- [FIX] nhận thêm bản dịch VI/ID
-                if t == "Chilli Finder" or t == "Cari Server"
-                or t == "Tìm Server" or t == "Tìm Máy Chủ" then
-                    return true
-                end
-            end
-            n = n + 1; if n > 300 then break end
-        end
-        return false
-    end
-
-    local function patchChilliElement(d)
-        if not (d:IsA("TextLabel") or d:IsA("TextButton")) then return end
-        local t = d.Text or ""
-
-        -- Spoof "No plan" / "NONE" → "Pro Max"
-        local function isNoPlan(s)
-            return s == "No plan" or s == "No Plan"
-            or s == "NONE" or s == "none"      -- CF account panel plan cell
-            or s:find("Belum berlangganan")    -- ID
-            or s == "Chưa đăng ký"             -- VI exact
-            or (s:find("Chưa") and (s:find("đăng") or s:find("gói")))  -- VI fuzzy
-        end
-        if isNoPlan(t) then
-            d.Text = "Pro Max"
-            if not d:GetAttribute("__CfAccSpoofed") then
-                d:SetAttribute("__CfAccSpoofed", true)
-                d:GetPropertyChangedSignal("Text"):Connect(function()
-                    local c = d.Text or ""
-                    if isNoPlan(c) then d.Text = "Pro Max" end
-                end)
-            end
-            return
-        end
-
-        -- Xóa nag booking (bắt cả bản gốc và bản dịch VI/ID)
-        local function isBookingNag(s)
-            return s:find("No active booking") or s:find("Book hours at") or s:find("chillihub")
-            or s:find("lịch đặt")   -- VI: "chưa có lịch đặt"
-            or s:find("pemesanan")  -- ID: "belum ada pemesanan"
-            or s:find("Book Chilli") or s:find("purchase") or s:find("subscribe")
-            or s:find("upgrade") or s:find("Đăng ký") or s:find("Mua gói")
-        end
-        if isBookingNag(t) then
-            d.Text = "✓ Active. Enjoy!"
-            if not d:GetAttribute("__CfBookSpoofed") then
-                d:SetAttribute("__CfBookSpoofed", true)
-                d:GetPropertyChangedSignal("Text"):Connect(function()
-                    local c = d.Text or ""
-                    if isBookingNag(c) then d.Text = "✓ Active. Enjoy!" end
-                end)
-            end
-            return
-        end
-
-        -- Nút Join: unlock visual + handler teleport trực tiếp
-        if d:IsA("TextButton")
-        and (t == "Join" or t == "Masuk" or t == "Vào" or t == "Tham gia") then
-            if not d:GetAttribute("__CfJoinUnlocked") then
-                d:SetAttribute("__CfJoinUnlocked", true)
-                d.Active          = true
-                d.AutoButtonColor = true
-                local GOLD = Color3.fromRGB(255, 185, 0)
-                pcall(function()
-                    if d.BackgroundColor3 ~= GOLD then d.BackgroundColor3 = GOLD end
-                end)
-                d:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-                    if d.BackgroundColor3 ~= GOLD then
-                        pcall(function() d.BackgroundColor3 = GOLD end)
-                    end
-                end)
-                d:GetPropertyChangedSignal("Active"):Connect(function()
-                    if not d.Active then d.Active = true end
-                end)
-                -- [CRACK] Handler: lấy jobId từ API response đã parse, bypass plan check hoàn toàn
-                d.MouseButton1Click:Connect(function()
-                    local jobId = nil
-
-                    -- 1) Ưu tiên: jobId từ API response (chính xác nhất)
-                    local cfIds = _G.__CF_JobIds or {}
-                    if #cfIds > 0 then
-                        -- Tìm row index của nút này trong danh sách rows
-                        local rowIdx = nil
-                        local rowFrame = d.Parent  -- frame chứa nút Join
-                        if rowFrame then
-                            local listFrame = rowFrame.Parent  -- frame chứa tất cả rows
-                            if listFrame then
-                                local idx = 0
-                                for _, sib in ipairs(listFrame:GetChildren()) do
-                                    if sib:IsA("GuiObject") then
-                                        idx = idx + 1
-                                        if sib == rowFrame then rowIdx = idx; break end
-                                    end
-                                end
-                            end
-                        end
-                        -- Nếu tìm được index → dùng jobId tương ứng
-                        if rowIdx and cfIds[rowIdx] then
-                            jobId = cfIds[rowIdx]
-                        else
-                            -- Fallback: dùng jobId mới nhất (1 server list đang hiển thị)
-                            jobId = cfIds[1]
-                        end
-                    end
-
-                    -- 2) Fallback: tìm trong hierarchy GUI
-                    if not jobId then jobId = findJobId(d) end
-
-                    -- 3) Teleport
-                    if jobId then
-                        local ok = pcall(function()
-                            TeleportService:TeleportToPlaceInstance(
-                                game.PlaceId, jobId, Players.LocalPlayer
-                            )
-                        end)
-                        -- Nếu teleport lỗi, thử lần lượt các jobId còn lại
-                        if not ok then
-                            for _, jid in ipairs(_G.__CF_JobIds or {}) do
-                                if jid ~= jobId then
-                                    local ok2 = pcall(function()
-                                        TeleportService:TeleportToPlaceInstance(
-                                            game.PlaceId, jid, Players.LocalPlayer
-                                        )
-                                    end)
-                                    if ok2 then break end
-                                end
-                            end
-                        end
-                    else
-                        -- 4) Last resort: thử tất cả jobId có trong cache
-                        for _, jid in ipairs(_G.__CF_JobIds or {}) do
-                            local ok2 = pcall(function()
-                                TeleportService:TeleportToPlaceInstance(
-                                    game.PlaceId, jid, Players.LocalPlayer
-                                )
-                            end)
-                            if ok2 then break end
-                        end
-                    end
-                end)
-            end
-        end
-    end
-
-    local function fullPatchChilliGui(gui)
-        if patchedGuis[gui] then return end
-        patchedGuis[gui] = true
-        gui:SetAttribute("__ChilliFinderPatched", true)
-
-        -- [LAGFIX] Dùng task.defer thay task.wait: không block frame, UI vẫn mượt
-        local allDesc = gui:GetDescendants()
-        for i = 1, #allDesc do
-            local d = allDesc[i]
-            if d and d.Parent then
-                task.defer(function()
-                    if d and d.Parent then pcall(patchChilliElement, d) end
-                end)
-            end
-        end
-
-        -- [FIX] Aggressive nag-kill loop: poll mỗi 1.0s (giảm lag so với 0.3s)
-        task.spawn(function()
-            while gui and gui.Parent do
-                for _, d in ipairs(gui:GetDescendants()) do
-                    if d and d.Parent and (d:IsA("TextLabel") or d:IsA("TextButton")) then
-                        local t = d.Text or ""
-                        -- Xóa nag mua gói
-                        if t:find("No active booking") or t:find("Book hours at") or t:find("chillihub")
-                        or t:find("lịch đặt") or t:find("pemesanan")
-                        or t:find("Book Chilli") or t:find("purchase") then
-                            pcall(function() d.Text = "✓ Active. Enjoy!" end)
-                        end
-                        -- [FIX] Plan display → Pro Max
-                        if t == "No plan" or t == "No Plan" or t == "Chưa đăng ký" or t:find("Belum")
-                        or t == "NONE" or t == "none" or t == "No Plan" then
-                            pcall(function() d.Text = "Pro Max" end)
-                        end
-                        -- [BUG FIX] TIME LEFT / ENDS AT value cells "-" → "Infinite"
-                        -- Chỉ check t=="-" (loại bỏ t=="" để không bắt nhầm label trống khác)
-                        -- Thêm PropertyChangedSignal lock để CF không fight được override
-                        if t == "-" and not d:GetAttribute("__CFTimeLocked") then
-                            local p = d.Parent
-                            if p then
-                                for _, sib in ipairs(p:GetChildren()) do
-                                    if sib ~= d and (sib:IsA("TextLabel") or sib:IsA("TextButton")) then
-                                        local sh = sib.Text or ""
-                                        if sh == "TIME LEFT" or sh == "ENDS AT"
-                                        or sh == "time_left" or sh == "ends_at"
-                                        or sh == "Time Left" or sh == "Ends At" then
-                                            d:SetAttribute("__CFTimeLocked", true)
-                                            pcall(function() d.Text = "Infinite" end)
-                                            -- Lock: CF không thể set lại về "-"
-                                            d:GetPropertyChangedSignal("Text"):Connect(function()
-                                                if d.Text ~= "Infinite" then
-                                                    pcall(function() d.Text = "Infinite" end)
-                                                end
-                                            end)
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                task.wait(1.0)  -- [LAGFIX] 0.3s→1.0s: giảm ~70% CPU usage của loop này
-            end
-        end)
-
-        -- Debounced DescendantAdded: gom 100ms
-        local pendingBatch, batchRunning = {}, false
-        gui.DescendantAdded:Connect(function(newD)
-            pendingBatch[#pendingBatch + 1] = newD
-            if not batchRunning then
-                batchRunning = true
-                task.delay(0.1, function()
-                    local batch  = pendingBatch
-                    pendingBatch = {}
-                    batchRunning = false
-                    for _, d in ipairs(batch) do
-                        if d and d.Parent then pcall(patchChilliElement, d) end
-                    end
-                end)
-            end
-        end)
-    end
-
-    -- Vòng phát hiện GUI mới mỗi 1.5s
-    while true do
-        task.wait(1.5)
-        for _, root in ipairs(roots) do
-            if root then
-                for _, gui in ipairs(root:GetChildren()) do
-                    if gui:IsA("ScreenGui")
-                    and not patchedGuis[gui]
-                    and not gui:GetAttribute("__IslandLocked") then
-                        task.spawn(function()
-                            if isChilliFinderGui(gui) then
-                                fullPatchChilliGui(gui)
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-    end
-end)
+print("[Kaizo Prime] Loaded | API: " .. AimAPI .. " | RightShift = menu")
